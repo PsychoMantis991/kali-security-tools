@@ -1,0 +1,85 @@
+{
+    "intensity_settings": {
+        "low": {
+            "max_threads": 2,
+            "scan_delay": 5,
+            "stealth_mode": true,
+            "timeout": 30,
+            "retry_attempts": 1,
+            "concurrent_tasks": 1
+        },
+        "medium": {
+            "max_threads": 5,
+            "scan_delay": 2,
+            "stealth_mode": false,
+            "timeout": 60,
+            "retry_attempts": 2,
+            "concurrent_tasks": 3
+        },
+        "high": {
+            "max_threads": 10,
+            "scan_delay": 0.5,
+            "stealth_mode": false,
+            "timeout": 120,
+            "retry_attempts": 3,
+            "concurrent_tasks": 5
+        }
+    },
+    "evasion_techniques": {
+        "enabled": true,
+        "techniques": [
+            "amsi_bypass",
+            "etw_bypass",
+            "payload_obfuscation",
+            "memory_patching",
+            "sleep_obfuscation"
+        ],
+        "custom_techniques": []
+    },
+    "vulnerability_checks": {
+        "zerologon": {
+            "enabled": true,
+            "timeout": 30
+        },
+        "ms14_068": {
+            "enabled": true,
+            "timeout": 30
+        },
+        "printnightmare": {
+            "enabled": true,
+            "timeout": 30
+        },
+        "petitpotam": {
+            "enabled": true,
+            "timeout": 30
+        }
+    },
+    "reporting": {
+        "formats": ["html", "pdf", "json"],
+        "templates": {
+            "executive": "templates/executive_report.html",
+            "technical": "templates/technical_report.html",
+            "vulnerabilities": "templates/vulnerabilities_report.html",
+            "network": "templates/network_report.html"
+        },
+        "visualizations": {
+            "enabled": true,
+            "format": "png",
+            "dpi": 300,
+            "style": "seaborn"
+        }
+    },
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        "file": "logs/pentest.log",
+        "max_size": 10485760,
+        "backup_count": 5
+    },
+    "cleanup": {
+        "enabled": true,
+        "remove_temp_files": true,
+        "remove_logs": false,
+        "remove_evidence": false
+    }
+} 

@@ -1,0 +1,38 @@
+{
+    "default_ports": {
+        "low": "20,21,22,23,25,53,80,110,143,443,445,993,995,1723,3306,3389,5900,8080",
+        "medium": "20-25,53,80,110-111,135,139,143,443,445,993,995,1723,3306,3389,5900,8080,8443",
+        "high": "1-1024,1433,1521,3306,3389,5432,5900,6379,8080,8443,27017",
+        "stealth": "20,21,22,23,25,53,80,110,143,443,445,993,995,1723,3306,3389,5900,8080",
+        "full": "1-65535"
+    },
+    "timing_templates": {
+        "low": 2,
+        "medium": 3,
+        "high": 4,
+        "stealth": 1,
+        "full": 5
+    },
+    "scan_options": {
+        "low": "-sS -sV --version-intensity 2 --max-retries 2 --min-rate 100",
+        "medium": "-sS -sV --version-intensity 5 --max-retries 3 --min-rate 500",
+        "high": "-sS -sV --version-intensity 9 --max-retries 5 --min-rate 1000",
+        "stealth": "-sS -sV --version-intensity 2 --max-retries 1 --min-rate 50",
+        "full": "-sS -sV --version-intensity 9 --max-retries 10 --min-rate 2000"
+    },
+    "service_detection": {
+        "low": "-sV --version-intensity 2 --max-retries 2",
+        "medium": "-sV --version-intensity 5 --max-retries 3",
+        "high": "-sV --version-intensity 9 --max-retries 5",
+        "stealth": "-sV --version-intensity 2 --max-retries 1",
+        "full": "-sV --version-intensity 9 --max-retries 10"
+    },
+    "evasion_options": {
+        "fragment_packets": true,
+        "use_decoy_hosts": false,
+        "spoof_mac": false,
+        "randomize_hosts": true,
+        "send_ethernet": false,
+        "use_proxies": false
+    }
+} 

@@ -1,0 +1,15 @@
+{
+    "target": "127.0.0.1",
+    "timestamp": "2025-06-04T20:04:28.573760",
+    "scan_info": {
+        "duration": 0.067977,
+        "intensity": "low",
+        "is_localhost": true,
+        "techniques_used": [
+            "ttl_manipulation",
+            "timing"
+        ]
+    },
+    "open_ports": [],
+    "services": {}
+}

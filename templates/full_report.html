@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Pentest</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --text-color: #333;
+            --light-bg: #f5f6fa;
+            --border-color: #dcdde1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--light-bg);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .header-content {
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        h3 {
+            color: var(--secondary-color);
+            margin: 1.5rem 0 1rem;
+        }
+        
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .overview-item {
+            background-color: var(--light-bg);
+            padding: 1.5rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .overview-item h4 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .overview-item p {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .vulnerability-list {
+            list-style: none;
+        }
+        
+        .vulnerability-item {
+            background-color: var(--light-bg);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .vulnerability-item h4 {
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .recommendation-list {
+            list-style: none;
+        }
+        
+        .recommendation-item {
+            background-color: var(--light-bg);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .recommendation-item h4 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .network-map {
+            width: 100%;
+            height: 400px;
+            background-color: var(--light-bg);
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin: 1rem 0;
+        }
+        
+        .severity-critical {
+            color: #e74c3c;
+        }
+        
+        .severity-high {
+            color: #e67e22;
+        }
+        
+        .severity-medium {
+            color: #f1c40f;
+        }
+        
+        .severity-low {
+            color: #2ecc71;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background-color: var(--light-bg);
+            color: var(--primary-color);
+        }
+        
+        tr:hover {
+            background-color: var(--light-bg);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-color);
+            opacity: 0.8;
+        }
+        
+        @media print {
+            body {
+                background-color: white;
+            }
+            
+            .section {
+                box-shadow: none;
+                border: 1px solid var(--border-color);
+            }
+            
+            .network-map, .chart-container {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <h1>Reporte de Pentest</h1>
+                <p class="subtitle">Análisis de Seguridad Detallado</p>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Resumen Ejecutivo -->
+        <section class="section">
+            <h2>Resumen Ejecutivo</h2>
+            
+            <div class="overview-grid">
+                <div class="overview-item">
+                    <h4>Fecha del Escaneo</h4>
+                    <p>{{ report.executive_summary.overview.scan_date }}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Objetivos Analizados</h4>
+                    <p>{{ report.executive_summary.overview.target_count }}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Vulnerabilidades Encontradas</h4>
+                    <p>{{ report.executive_summary.overview.vulnerability_count }}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Duración del Escaneo</h4>
+                    <p>{{ "%.2f"|format(report.executive_summary.overview.scan_duration) }} segundos</p>
+                </div>
+            </div>
+            
+            <h3>Hallazgos Clave</h3>
+            <ul class="vulnerability-list">
+                {% for finding in report.executive_summary.key_findings %}
+                <li class="vulnerability-item">
+                    <h4>{{ finding.title }}</h4>
+                    <p>{{ finding.description }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3>Evaluación de Riesgos</h3>
+            <div class="overview-grid">
+                <div class="overview-item">
+                    <h4 class="severity-critical">Riesgos Críticos</h4>
+                    <p>{{ report.executive_summary.risk_assessment.critical_risks|length }}</p>
+                </div>
+                <div class="overview-item">
+                    <h4 class="severity-high">Riesgos Altos</h4>
+                    <p>{{ report.executive_summary.risk_assessment.high_risks|length }}</p>
+                </div>
+                <div class="overview-item">
+                    <h4 class="severity-medium">Riesgos Medios</h4>
+                    <p>{{ report.executive_summary.risk_assessment.medium_risks|length }}</p>
+                </div>
+                <div class="overview-item">
+                    <h4 class="severity-low">Riesgos Bajos</h4>
+                    <p>{{ report.executive_summary.risk_assessment.low_risks|length }}</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Detalles Técnicos -->
+        <section class="section">
+            <h2>Detalles Técnicos</h2>
+            
+            <h3>Parámetros del Escaneo</h3>
+            <table>
+                <tr>
+                    <th>Parámetro</th>
+                    <th>Valor</th>
+                </tr>
+                {% for param, value in report.technical_details.scan_parameters.items() %}
+                <tr>
+                    <td>{{ param }}</td>
+                    <td>{{ value }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            
+            <h3>Información de Objetivos</h3>
+            <table>
+                <tr>
+                    <th>Objetivo</th>
+                    <th>IP</th>
+                    <th>Sistema Operativo</th>
+                    <th>Servicios</th>
+                </tr>
+                {% for target, info in report.technical_details.target_information.items() %}
+                <tr>
+                    <td>{{ target }}</td>
+                    <td>{{ info.ip }}</td>
+                    <td>{{ info.os }}</td>
+                    <td>{{ info.services|join(', ') }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </section>
+        
+        <!-- Vulnerabilidades -->
+        <section class="section">
+            <h2>Vulnerabilidades</h2>
+            
+            <h3 class="severity-critical">Vulnerabilidades Críticas</h3>
+            <ul class="vulnerability-list">
+                {% for vuln in report.vulnerabilities.critical %}
+                <li class="vulnerability-item">
+                    <h4>{{ vuln.title }}</h4>
+                    <p>{{ vuln.description }}</p>
+                    <p><strong>CVSS:</strong> {{ vuln.cvss }}</p>
+                    <p><strong>Recomendación:</strong> {{ vuln.recommendation }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3 class="severity-high">Vulnerabilidades Altas</h3>
+            <ul class="vulnerability-list">
+                {% for vuln in report.vulnerabilities.high %}
+                <li class="vulnerability-item">
+                    <h4>{{ vuln.title }}</h4>
+                    <p>{{ vuln.description }}</p>
+                    <p><strong>CVSS:</strong> {{ vuln.cvss }}</p>
+                    <p><strong>Recomendación:</strong> {{ vuln.recommendation }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3 class="severity-medium">Vulnerabilidades Medias</h3>
+            <ul class="vulnerability-list">
+                {% for vuln in report.vulnerabilities.medium %}
+                <li class="vulnerability-item">
+                    <h4>{{ vuln.title }}</h4>
+                    <p>{{ vuln.description }}</p>
+                    <p><strong>CVSS:</strong> {{ vuln.cvss }}</p>
+                    <p><strong>Recomendación:</strong> {{ vuln.recommendation }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3 class="severity-low">Vulnerabilidades Bajas</h3>
+            <ul class="vulnerability-list">
+                {% for vuln in report.vulnerabilities.low %}
+                <li class="vulnerability-item">
+                    <h4>{{ vuln.title }}</h4>
+                    <p>{{ vuln.description }}</p>
+                    <p><strong>CVSS:</strong> {{ vuln.cvss }}</p>
+                    <p><strong>Recomendación:</strong> {{ vuln.recommendation }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        
+        <!-- Análisis de Red -->
+        <section class="section">
+            <h2>Análisis de Red</h2>
+            
+            <h3>Mapa de Red</h3>
+            <div class="network-map">
+                <!-- Aquí se insertará el mapa de red generado -->
+            </div>
+            
+            <h3>Análisis de Servicios</h3>
+            <table>
+                <tr>
+                    <th>Servicio</th>
+                    <th>Puerto</th>
+                    <th>Versión</th>
+                    <th>Estado</th>
+                </tr>
+                {% for service in report.network_analysis.service_analysis %}
+                <tr>
+                    <td>{{ service.name }}</td>
+                    <td>{{ service.port }}</td>
+                    <td>{{ service.version }}</td>
+                    <td>{{ service.status }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+            
+            <h3>Análisis de Protocolos</h3>
+            <div class="chart-container">
+                <!-- Aquí se insertará el gráfico de protocolos -->
+            </div>
+        </section>
+        
+        <!-- Recomendaciones -->
+        <section class="section">
+            <h2>Recomendaciones</h2>
+            
+            <h3>Acciones Inmediatas</h3>
+            <ul class="recommendation-list">
+                {% for action in report.recommendations.immediate_actions %}
+                <li class="recommendation-item">
+                    <h4>{{ action.title }}</h4>
+                    <p>{{ action.description }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3>Recomendaciones a Corto Plazo</h3>
+            <ul class="recommendation-list">
+                {% for rec in report.recommendations.short_term %}
+                <li class="recommendation-item">
+                    <h4>{{ rec.title }}</h4>
+                    <p>{{ rec.description }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3>Recomendaciones a Largo Plazo</h3>
+            <ul class="recommendation-list">
+                {% for rec in report.recommendations.long_term %}
+                <li class="recommendation-item">
+                    <h4>{{ rec.title }}</h4>
+                    <p>{{ rec.description }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <h3>Mejores Prácticas</h3>
+            <ul class="recommendation-list">
+                {% for practice in report.recommendations.best_practices %}
+                <li class="recommendation-item">
+                    <h4>{{ practice.title }}</h4>
+                    <p>{{ practice.description }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+        
+        <!-- Apéndice -->
+        <section class="section">
+            <h2>Apéndice</h2>
+            
+            <h3>Logs del Escaneo</h3>
+            <pre>{{ report.appendix.scan_logs }}</pre>
+            
+            <h3>Herramientas Utilizadas</h3>
+            <ul>
+                {% for tool in report.appendix.tools_used %}
+                <li>{{ tool.name }} - {{ tool.version }}</li>
+                {% endfor %}
+            </ul>
+            
+            <h3>Referencias</h3>
+            <ul>
+                {% for ref in report.appendix.references %}
+                <li><a href="{{ ref.url }}">{{ ref.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>Reporte generado automáticamente por Kali Security Tools</p>
+            <p>Fecha de generación: {{ report.executive_summary.overview.scan_date }}</p>
+        </div>
+    </footer>
+</body>
+</html> 

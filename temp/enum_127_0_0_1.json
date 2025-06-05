@@ -1,0 +1,40 @@
+{
+  "target": "127.0.0.1",
+  "scan_info": {
+    "intensity": "medium",
+    "timestamp": "2025-06-05T16:16:11.598180"
+  },
+  "open_ports": [
+    5678,
+    9000
+  ],
+  "services": {
+    "5678": {
+      "service": "rrac",
+      "version": "",
+      "banner": ""
+    },
+    "9000": {
+      "directories": [
+        "/api                  [Size: 99]",
+        "/apis                 [Size: 99]",
+        "/index.html           [Size: 49] [--> /timeout.html]"
+      ],
+      "technologies": [],
+      "headers": {
+        "Cache-Control": "max-age=31536000",
+        "Content-Encoding": "gzip",
+        "Content-Type": "text/html; charset=utf-8",
+        "Last-Modified": "Thu, 08 May 2025 23:01:05 GMT",
+        "Vary": "Accept-Encoding",
+        "X-Content-Type-Options": "nosniff",
+        "X-Csrf-Token": "",
+        "Date": "Thu, 05 Jun 2025 14:16:11 GMT",
+        "Transfer-Encoding": "chunked"
+      },
+      "service": "http",
+      "version": ""
+    }
+  },
+  "vulnerabilities": []
+}

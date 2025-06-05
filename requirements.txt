@@ -1,0 +1,157 @@
+# Core networking and HTTP libraries
+requests
+urllib3
+certifi
+chardet
+idna
+
+# Web scraping and parsing
+beautifulsoup4
+selenium
+
+# SSH and remote access
+paramiko
+pexpect
+fabric
+
+# System and network utilities
+psutil
+netifaces
+# python-nmap is already installed in Kali
+# netfilterqueue requires: apt-get install libnfnetlink-dev
+scapy
+# netfilterqueue
+
+# Cryptography and security
+pycryptodome
+cryptography
+pyopenssl
+# pyaes is already installed in Kali
+passlib
+bcrypt
+pyjwt
+
+# LDAP and Active Directory
+ldap3
+# python-ldap requires: apt-get install libldap2-dev libsasl2-dev
+pyasn1
+pyasn1-modules
+ldapdomaindump
+
+# SMB/CIFS
+# pysmb is already installed in Kali
+impacket
+
+# DNS utilities
+dnspython
+
+# Database libraries
+sqlalchemy
+pymongo
+redis
+psycopg2-binary
+
+# Cloud APIs
+boto3
+azure-identity
+google-cloud-storage
+
+# OSINT libraries
+shodan
+censys
+python-whois
+ipwhois
+geoip2
+maxminddb
+
+# Data processing and analysis
+pandas
+numpy
+scipy
+
+# Visualization libraries
+matplotlib
+seaborn
+plotly
+dash
+kaleido
+
+# Report generation
+jinja2
+reportlab
+weasyprint
+pdfkit
+# wkhtmltopdf requires: apt-get install wkhtmltopdf
+
+# File processing
+python-magic
+pillow
+opencv-python
+pytesseract
+pdfplumber
+python-docx
+xlrd
+openpyxl
+xlsxwriter
+python-pptx
+zipfile36
+rarfile
+py7zr
+csvkit
+
+# Web frameworks
+flask
+flask-cors
+django
+fastapi
+uvicorn
+
+# Async libraries
+aiohttp
+asyncio
+
+# Date and time utilities
+python-dateutil
+
+# Color and terminal utilities
+colorama
+rich
+click
+
+# Configuration and data formats
+configparser
+pyyaml
+toml
+xmltodict
+
+# Network and web utilities
+validators
+tldextract
+user-agents
+fake-useragent
+
+# Machine learning (optional)
+scikit-learn
+
+# Additional security tools
+# python-libnmap is already installed in Kali
+
+# Image processing for reports
+Wand
+
+# Additional utilities
+pytz
+six
+python-dotenv
+markdown
+jsonschema
+file-magic
+
+# Metasploit
+pymetasploit3
+
+# VirusTotal
+virustotal-python
+
+# Progress bars
+tqdm

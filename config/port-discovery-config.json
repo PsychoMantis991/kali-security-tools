@@ -1,0 +1,64 @@
+{
+    "scan_ports": "1-65535",
+    "scan_type": "syn",
+    "timing": 2,
+    "evasion_techniques": [
+        "ttl_manipulation",
+        "timing",
+        "fragmentation",
+        "spoof_mac",
+        "random_ports",
+        "decoy_ips"
+    ],
+    "random_agent": true,
+    "default_ports": {
+        "low": "-F",
+        "medium": "-p-",
+        "high": "-p-",
+        "stealth": "-F",
+        "full": "-p-"
+    },
+    "timing_templates": {
+        "low": 2,
+        "medium": 3,
+        "high": 4,
+        "stealth": 1,
+        "full": 5
+    },
+    "scan_options": {
+        "low": "-sS -Pn -n --open --max-retries 1 --min-rate 100",
+        "medium": "-sS -Pn -n --open --max-retries 2 --min-rate 200",
+        "high": "-sS -Pn -n --open --max-retries 3 --min-rate 500",
+        "stealth": "-sS -Pn -n --open --max-retries 1 --min-rate 50 --max-rate 100",
+        "full": "-sS -Pn -n --open --max-retries 4 --min-rate 1000"
+    },
+    "service_detection": {
+        "low": "-sV --version-intensity 2",
+        "medium": "-sV --version-intensity 5",
+        "high": "-sV --version-intensity 9 --max-retries 4",
+        "stealth": "-sV --version-intensity 2 --max-retries 1",
+        "full": "-sV --version-intensity 9 --max-retries 4"
+    },
+    "evasion_options": {
+        "ttl_manipulation": "--ttl 64",
+        "fragmentation": "-f",
+        "spoof_mac": "--spoof-mac 0",
+        "random_ports": "--randomize-hosts",
+        "decoy_ips": "-D RND:5"
+    },
+    "output": {
+        "save_nmap_xml": true,
+        "save_json": true,
+        "save_gnmap": false
+    },
+    "performance": {
+        "max_retries": 2,
+        "retry_delay": 5,
+        "timeout": 600
+    },
+    "localhost_optimization": {
+        "enabled": true,
+        "timing": 4,
+        "options": "-sS -Pn -n --open --max-retries 2"
+    }
+} 

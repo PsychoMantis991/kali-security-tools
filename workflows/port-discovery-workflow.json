@@ -1,0 +1,16 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Procesar resultados del descubrimiento de puertos\nconst result = items[0].json;\n\n// Log para depuración\nconsole.log('Datos recibidos:', JSON.stringify(result, null, 2));\n\n// Verificar si hay puertos abiertos\nconst openPorts = result.open_ports || [];\n\nconsole.log('Puertos encontrados:', openPorts);\n\nif (!openPorts.length) {\n  return [{\n    json: {\n      success: false,\n      error: 'No open ports found',\n      target: result.target,\n      execution_id: result.scan_info?.timestamp || Date.now()\n    }\n  }];\n}\n\n// Preparar resultado para enumeración de servicios\nconst portDiscoveryResult = {\n  success: true,\n  target: result.target,\n  execution_id: result.scan_info?.timestamp || Date.now(),\n  open_ports: openPorts,\n  services: result.services || {},\n  scan_config: {\n    intensity: result.scan_info?.intensity || 'medium',\n    service_detection: result.scan_info?.service_detection || false\n  }\n};\n\nconsole.log('Resultado procesado:', JSON.stringify(portDiscoveryResult, null, 2));\n\nreturn [{ json: portDiscoveryResult }];"
+      },
+      "name": "Process Port Discovery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        740,
+        300
+      ]
+    }
+  ]
+} 

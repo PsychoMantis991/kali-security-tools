@@ -1,0 +1,162 @@
+{
+  "name": "01-Recon-Enumeration",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "recon-scan",
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validar y procesar los parámetros de entrada\nconst input = $input.item.json;\n\n// Valores por defecto\nconst defaultConfig = {\n  target: '127.0.0.1',\n  intensity: 'medium',\n  evasion: true,\n  max_threads: 5,\n  timeout: 600\n};\n\n// Validar y procesar el objetivo\nif (!input.target) {\n  throw new Error('El campo target es requerido');\n}\n\n// Validar y procesar la intensidad\nconst validIntensities = ['low', 'medium', 'high'];\nconst intensity = input.intensity || defaultConfig.intensity;\nif (!validIntensities.includes(intensity)) {\n  throw new Error('La intensidad debe ser: low, medium o high');\n}\n\n// Validar y procesar max_threads\nconst maxThreads = parseInt(input.max_threads) || defaultConfig.max_threads;\nif (maxThreads < 1 || maxThreads > 10) {\n  throw new Error('max_threads debe estar entre 1 y 10');\n}\n\n// Validar y procesar timeout\nconst timeout = parseInt(input.timeout) || defaultConfig.timeout;\nif (timeout < 60 || timeout > 3600) {\n  throw new Error('timeout debe estar entre 60 y 3600 segundos');\n}\n\n// Construir la configuración final\nconst config = {\n  target: input.target,\n  scan_intensity: intensity,\n  enable_evasion: input.evasion !== false,\n  max_threads: maxThreads,\n  timeout: timeout\n};\n\nreturn [{ json: config }];"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/kali/kali-security-tools && python3 scripts/port-discovery.py {{$json.target}} --config config/port-discovery-config.json --output temp/ports_{{$json.target.replace('.', '_')}}.json",
+        "cwd": "/home/kali/kali-security-tools"
+      },
+      "id": "port-scan",
+      "name": "Port Discovery",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parsear resultados del escaneo de puertos\nconst scanFile = `temp/ports_${$json.target.replace(/\\./g, '_')}.json`;\nconst fs = require('fs');\n\ntry {\n  const scanData = JSON.parse(fs.readFileSync(`/home/kali/kali-security-tools/${scanFile}`, 'utf8'));\n  \n  // Verificar si se encontraron puertos abiertos\n  if (scanData.open_ports && scanData.open_ports.length > 0) {\n    return [{\n      json: {\n        target: $json.target,\n        ports: scanData.open_ports,\n        services: scanData.services,\n        continue_scan: true\n      }\n    }];\n  }\n  \n  return [{\n    json: {\n      target: $json.target,\n      ports: [],\n      services: {},\n      continue_scan: false\n    }\n  }];\n} catch (error) {\n  return [{\n    json: {\n      error: error.message,\n      target: $json.target,\n      continue_scan: false\n    }\n  }];\n}"
+      },
+      "id": "parse-ports",
+      "name": "Parse Port Scan Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json['continue_scan']}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-ports",
+      "name": "Check Port Scan Results",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/kali/kali-security-tools && python3 scripts/service-enum.py {{$json.target}} --ports temp/ports_{{$json.target.replace('.', '_')}}.json --config config/service-enum-config.json --output temp/enum_{{$json.target.replace('.', '_')}}.json",
+        "cwd": "/home/kali/kali-security-tools"
+      },
+      "id": "service-enum",
+      "name": "Service Enumeration",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parsear resultados de enumeración\nconst enumFile = `temp/enum_${$json.target.replace(/\\./g, '_')}.json`;\nconst fs = require('fs');\n\ntry {\n  const enumData = JSON.parse(fs.readFileSync(`/home/kali/kali-security-tools/${enumFile}`, 'utf8'));\n  \n  // Agregar información del host\n  enumData.host = $json.target;\n  enumData.scan_complete = true;\n  \n  // Identificar vectores de ataque\n  enumData.attack_vectors = [];\n  \n  // Verificar servicios vulnerables\n  for (const [port, service] of Object.entries(enumData.services || {})) {\n    if (service.vulnerabilities && service.vulnerabilities.length > 0) {\n      enumData.attack_vectors.push({\n        type: 'vulnerability',\n        service: service.service || 'unknown',\n        port: port,\n        vulnerabilities: service.vulnerabilities\n      });\n    }\n    \n    // Verificar servicios web con directorios sensibles\n    if (service.directories && service.directories.length > 0) {\n      const sensitive_dirs = service.directories.filter(dir => \n        dir.includes('admin') || \n        dir.includes('backup') || \n        dir.includes('config') || \n        dir.includes('db') || \n        dir.includes('dev') || \n        dir.includes('test')\n      );\n      \n      if (sensitive_dirs.length > 0) {\n        enumData.attack_vectors.push({\n          type: 'sensitive_directories',\n          service: 'web',\n          port: port,\n          directories: sensitive_dirs\n        });\n      }\n    }\n  }\n  \n  return [{ json: enumData }];\n} catch (error) {\n  return [{ json: { error: error.message, host: $json.target } }];\n}"
+      },
+      "id": "parse-enum",
+      "name": "Parse Enumeration Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Port Discovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Port Discovery": {
+      "main": [
+        [
+          {
+            "node": "Parse Port Scan Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Port Scan Results": {
+      "main": [
+        [
+          {
+            "node": "Check Port Scan Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Port Scan Results": {
+      "main": [
+        [
+          {
+            "node": "Service Enumeration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Enumeration Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Service Enumeration": {
+      "main": [
+        [
+          {
+            "node": "Parse Enumeration Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 

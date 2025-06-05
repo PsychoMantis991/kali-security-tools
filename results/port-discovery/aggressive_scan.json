@@ -1,0 +1,26 @@
+{
+    "target": "127.0.0.1",
+    "timestamp": "2025-06-04T20:31:11.638915",
+    "scan_info": {
+        "duration": 6.326764,
+        "intensity": "high",
+        "is_localhost": true,
+        "techniques_used": [
+            "ttl_manipulation",
+            "timing"
+        ]
+    },
+    "open_ports": [
+        80
+    ],
+    "services": {
+        "80": {
+            "protocol": "tcp",
+            "state": "open",
+            "service": "http",
+            "product": "nginx",
+            "version": "",
+            "extrainfo": ""
+        }
+    }
+}

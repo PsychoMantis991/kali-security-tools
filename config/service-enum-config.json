@@ -1,0 +1,37 @@
+{
+    "timeout": 30,
+    "max_threads": 5,
+    "wordlists": {
+        "directories": "/usr/share/wordlists/dirb/common.txt",
+        "subdomains": "/usr/share/wordlists/dns/subdomains-top1million-5000.txt"
+    },
+    "web_enumeration": {
+        "enabled": true,
+        "dir_scan": true,
+        "tech_detect": true,
+        "header_analysis": true,
+        "vuln_scan": true
+    },
+    "ssh_enumeration": {
+        "enabled": true,
+        "version_detect": true,
+        "auth_methods": true,
+        "key_analysis": true
+    },
+    "smb_enumeration": {
+        "enabled": true,
+        "share_enum": true,
+        "os_detect": true,
+        "domain_detect": true
+    },
+    "output": {
+        "save_json": true,
+        "save_nmap_xml": true,
+        "save_nuclei_json": true
+    },
+    "performance": {
+        "max_retries": 2,
+        "retry_delay": 5,
+        "timeout": 600
+    }
+} 
