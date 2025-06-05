@@ -45,6 +45,10 @@ python3 -m pip install --upgrade pip --break-system-packages
 # Instalamos solo las dependencias que no están en los repositorios de Kali
 pip3 install --user --no-cache-dir -r requirements.txt --break-system-packages
 
+# Instalar Node.js y npm si no están instalados
+echo -e "${YELLOW}Instalando Node.js y npm...${NC}"
+sudo apt install -y nodejs npm
+
 # Instalar n8n
 echo -e "${YELLOW}Instalando n8n...${NC}"
 sudo npm install n8n -g
