@@ -1,0 +1,67 @@
+{
+    "service_corrections": {
+        "winrm": {
+            "correct_service": "winrm",
+            "correct_port": 5985,
+            "os_requirements": ["Windows"],
+            "exploitation_tool": "evil-winrm",
+            "exploitation_port": 5985,
+            "protocol": "winrm"
+        },
+        "ms-wbt-server": {
+            "correct_service": "rdp",
+            "correct_port": 3389,
+            "os_requirements": ["Windows"],
+            "exploitation_tool": "xfreerdp",
+            "exploitation_port": 3389,
+            "protocol": "rdp"
+        },
+        "microsoft-ds": {
+            "correct_service": "smb",
+            "correct_port": 445,
+            "os_requirements": ["Windows"],
+            "exploitation_tool": "smbclient",
+            "exploitation_port": 445,
+            "protocol": "smb"
+        },
+        "netbios-ssn": {
+            "correct_service": "smb",
+            "correct_port": 139,
+            "os_requirements": ["Windows"],
+            "exploitation_tool": "smbclient",
+            "exploitation_port": 139,
+            "protocol": "smb"
+        }
+    },
+    "os_specific_services": {
+        "Windows": {
+            "winrm": {
+                "ports": [5985, 5986],
+                "protocol": "winrm",
+                "exploitation_tool": "evil-winrm"
+            },
+            "rdp": {
+                "ports": [3389],
+                "protocol": "rdp",
+                "exploitation_tool": "xfreerdp"
+            },
+            "smb": {
+                "ports": [139, 445],
+                "protocol": "smb",
+                "exploitation_tool": "smbclient"
+            }
+        },
+        "Linux": {
+            "ssh": {
+                "ports": [22],
+                "protocol": "ssh",
+                "exploitation_tool": "ssh"
+            },
+            "http": {
+                "ports": [80, 443, 8080, 8443],
+                "protocol": "http",
+                "exploitation_tool": "curl"
+            }
+        }
+    }
+} 
