@@ -17,14 +17,14 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/opt/pentest/temp/port-discovery.log'),
+        logging.FileHandler('/home/kali/kali-security-tools/temp/port-discovery.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger('port-discovery')
 
 class PortDiscovery:
-    def __init__(self, config_file='/opt/pentest/config/port-discovery-config.json'):
+    def __init__(self, config_file='/home/kali/kali-security-tools/config/port-discovery-config.json'):
         """Inicializa el descubridor con configuración desde archivo"""
         try:
             with open(config_file, 'r') as f:
@@ -90,30 +90,67 @@ class PortDiscovery:
         is_local = self.is_localhost(target)
         if is_local and self.config.get('localhost_optimization', {}).get('enabled', True):
             return {
-                'ports': '20,21,22,23,25,53,80,110,143,443,445,993,995,1723,3306,3389,5900,8080',
-                'timing': self.config['localhost_optimization']['timing'],
-                'options': self.config['localhost_optimization']['options']
+                'options': self.config['localhost_optimization']['options'],
+                'timing': self.config['localhost_optimization']['timing']
             }
+        
         return {
-            'ports': self.config['default_ports'][intensity],
-            'timing': self.config['timing_templates'][intensity],
-            'options': self.config['scan_options'][intensity]
+            'options': self.config['scan_options'][intensity],
+            'timing': self.config['timing_templates'][intensity]
         }
     
     def run_nmap_scan(self, target, scan_args):
         try:
-            scan_args += " -oX -"
+            # Generar nombre de archivo único
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            execution_id = f"nmap_scan_{timestamp}"
+            output_file = f"/home/kali/kali-security-tools/temp/{execution_id}.json"
+            
+            # Asegurarse de que no hay parámetros duplicados
+            args_list = scan_args.split()
+            args_list = list(dict.fromkeys(args_list))  # Eliminar duplicados
+            scan_args = ' '.join(args_list)
+            
+            # Añadir salida XML y guardar en archivo
+            scan_args += f" -oX {output_file}"
             cmd = ['nmap'] + scan_args.split() + [target]
             logger.info(f"Ejecutando comando: {' '.join(cmd)}")
+            
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 check=True
             )
-            return result.stdout
+            
+            # Leer el archivo XML generado
+            with open(output_file, 'r') as f:
+                xml_output = f.read()
+            
+            # Convertir XML a JSON y guardar
+            open_ports, services, os_info, host_info = self.parse_nmap_xml(xml_output)
+            json_output = {
+                'execution_id': execution_id,
+                'timestamp': timestamp,
+                'target': target,
+                'command': ' '.join(cmd),
+                'open_ports': open_ports,
+                'services': services,
+                'os_info': os_info,
+                'host_info': host_info
+            }
+            
+            with open(output_file, 'w') as f:
+                json.dump(json_output, f, indent=2)
+            
+            logger.info(f"Resultados guardados en: {output_file}")
+            return xml_output
+            
         except subprocess.CalledProcessError as e:
             logger.error(f"Error ejecutando nmap: {e.stderr}")
+            return None
+        except Exception as e:
+            logger.error(f"Error procesando resultados: {str(e)}")
             return None
     
     def correct_service_identification(self, service_info, os_info):
@@ -207,17 +244,15 @@ class PortDiscovery:
             logger.info("No hay puertos para escanear con nmap.")
             return {}
         try:
-            port_str = ",".join(map(str, ports))
             scan_config = self.get_scan_config(target, intensity)
-            evasion_args = []
-            if not self.is_localhost(target):
-                if "ttl_manipulation" in self.config.get("evasion_techniques", []):
-                    evasion_args.append("--ttl 64")
-                if self.config.get("random_agent", True):
-                    evasion_args.append(f"--script-args http.useragent='{self.get_random_agent()}'")
             
-            # Añadir detección de OS y host
-            scan_args = f"-sV -O --osscan-guess {scan_config['options']} -p {port_str} -T{scan_config['timing']} {' '.join(evasion_args)}"
+            # Usar las opciones directamente del archivo de configuración
+            scan_args = scan_config['options']
+            
+            # Añadir el parámetro de puertos según la configuración
+            if intensity in self.config.get('default_ports', {}):
+                scan_args += f" {self.config['default_ports'][intensity]}"
+            
             logger.info(f"Ejecutando detección de servicios con argumentos: {scan_args}")
             xml_output = self.run_nmap_scan(target, scan_args)
             open_ports, services, os_info, host_info = self.parse_nmap_xml(xml_output)
@@ -253,7 +288,12 @@ class PortDiscovery:
         try:
             # 1. Escaneo inicial de puertos
             scan_config = self.get_scan_config(target, intensity)
-            scan_args = f"-sS {scan_config['options']} -p {scan_config['ports']} -T{scan_config['timing']}"
+            scan_args = scan_config['options']
+            
+            # Añadir el parámetro de puertos según la configuración
+            if intensity in self.config.get('default_ports', {}):
+                scan_args += f" {self.config['default_ports'][intensity]}"
+            
             xml_output = self.run_nmap_scan(target, scan_args)
             open_ports, services, os_info, host_info = self.parse_nmap_xml(xml_output)
             

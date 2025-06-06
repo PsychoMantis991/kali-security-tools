@@ -3,7 +3,22 @@
 import json
 import sys
 import re
+import os
+import glob
 from datetime import datetime
+
+def find_latest_nmap_output():
+    """Find the most recent nmap output file in the temp directory."""
+    temp_dir = "/home/kali/kali-security-tools/temp"
+    pattern = os.path.join(temp_dir, "nmap_scan_*.json")
+    files = glob.glob(pattern)
+    
+    if not files:
+        return None
+    
+    # Sort files by modification time, newest first
+    latest_file = max(files, key=os.path.getmtime)
+    return latest_file
 
 def parse_nmap_output(output):
     """Parse nmap output and extract relevant information."""
@@ -29,10 +44,14 @@ def parse_nmap_output(output):
         
         # Copy basic data from JSON
         result["target"] = data.get("target", "")
-        result["scan_info"] = data.get("scan_info", result["scan_info"])
+        result["scan_info"] = {
+            "timestamp": data.get("timestamp", datetime.now().isoformat()),
+            "intensity": data.get("scan_info", {}).get("intensity", "full"),
+            "execution_id": data.get("execution_id", "")
+        }
         result["open_ports"] = data.get("open_ports", [])
         
-        # Process services to keep only basic info
+        # Process services
         services = data.get("services", {})
         for port, service in services.items():
             result["services"][port] = {
@@ -42,38 +61,9 @@ def parse_nmap_output(output):
                 "version": service.get("version", "")
             }
         
-        # Extract OS and host info from nmap output
-        os_match = re.search(r'Running: ([^\n]+)', output)
-        if os_match:
-            result["os_info"]["os"] = os_match.group(1)
-            print(f"Found OS: {result['os_info']['os']}", file=sys.stderr)
-        
-        os_details_match = re.search(r'OS details: ([^\n]+)', output)
-        if os_details_match:
-            result["os_info"]["details"] = os_details_match.group(1)
-            print(f"Found OS details: {result['os_info']['details']}", file=sys.stderr)
-        
-        # Extract host information
-        host_match = re.search(r'Service Info: Host: ([^;]+)', output)
-        if host_match:
-            result["host_info"]["hostname"] = host_match.group(1)
-            print(f"Found hostname: {result['host_info']['hostname']}", file=sys.stderr)
-        
-        # Extract SMB information if available
-        smb_os_match = re.search(r'smb-os-discovery:.*?OS: ([^\n]+)', output, re.DOTALL)
-        if smb_os_match:
-            result["os_info"]["smb_os"] = smb_os_match.group(1)
-            print(f"Found SMB OS: {result['os_info']['smb_os']}", file=sys.stderr)
-        
-        smb_computer_match = re.search(r'Computer name: ([^\n]+)', output)
-        if smb_computer_match:
-            result["host_info"]["computer_name"] = smb_computer_match.group(1)
-            print(f"Found SMB computer name: {result['host_info']['computer_name']}", file=sys.stderr)
-        
-        smb_domain_match = re.search(r'Domain name: ([^\n]+)', output)
-        if smb_domain_match:
-            result["host_info"]["domain"] = smb_domain_match.group(1)
-            print(f"Found SMB domain: {result['host_info']['domain']}", file=sys.stderr)
+        # Copy OS and host info
+        result["os_info"] = data.get("os_info", {})
+        result["host_info"] = data.get("host_info", {})
         
         print(f"Found target: {result['target']}", file=sys.stderr)
         print(f"Found {len(result['open_ports'])} ports", file=sys.stderr)
@@ -135,12 +125,31 @@ def parse_nmap_output(output):
     return result
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: process-nmap-output.py <nmap_output_file> <output_json_file>", file=sys.stderr)
+    if len(sys.argv) < 2:
+        print("Usage: process-nmap-output.py <nmap_output_file> [output_json_file]", file=sys.stderr)
+        print("If <nmap_output_file> is 'auto', it will use the most recent nmap scan file", file=sys.stderr)
         sys.exit(1)
     
     input_file = sys.argv[1]
-    output_file = sys.argv[2]
+    
+    # Si el archivo de entrada es "auto", buscar el más reciente
+    if input_file == "auto":
+        input_file = find_latest_nmap_output()
+        if not input_file:
+            print("Error: No nmap output files found in temp directory", file=sys.stderr)
+            sys.exit(1)
+        print(f"Using latest nmap output file: {input_file}", file=sys.stderr)
+        
+        # Generar nombre de archivo de salida basado en el archivo de entrada
+        input_filename = os.path.basename(input_file)
+        output_filename = f"final-{input_filename}"
+        output_file = os.path.join(os.path.dirname(input_file), output_filename)
+    else:
+        # Si no es auto, usar el segundo argumento como archivo de salida
+        if len(sys.argv) != 3:
+            print("Error: output_json_file is required when not using 'auto'", file=sys.stderr)
+            sys.exit(1)
+        output_file = sys.argv[2]
     
     print(f"Processing file: {input_file}", file=sys.stderr)
     print(f"Output will be written to: {output_file}", file=sys.stderr)
