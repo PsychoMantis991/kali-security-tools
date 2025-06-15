@@ -1,0 +1,823 @@
+{
+  "name": "Enumeracion + Explotacion",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://brief-woman-93.webhook.cool/",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3240,
+        -160
+      ],
+      "id": "0d7223fc-4206-4c28-8b57-01bd4160eb66",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET,POST",
+        "path": "scan-network",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "f7384940-d2ed-4447-89ac-d4aefe9de45e",
+      "name": "Start Network Scan",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -7880,
+        360
+      ],
+      "webhookId": "scan-network-webhook",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Configuraci\u00f3n b\u00e1sica del escaneo\nconst input = items[0].json;\nconst params = input.query || input.body || {};\n\n// Valores por defecto\nconst defaultConfig = {\n  scan_intensity: 'medium',\n  evasion: true,\n  max_threads: 5,\n  timeout: 300\n};\n\n// Validar y procesar el objetivo\nconst target = params.target_network || params.target;\nif (!target) {\n  throw new Error('Se requiere un objetivo (target) para el escaneo');\n}\nconsole.log('Target procesado:', target);\n\n// Validar y procesar la intensidad\nconst validIntensities = ['low', 'medium', 'high', 'stealth', 'full'];\nconst scan_intensity = params.intensity || params.scan_intensity || defaultConfig.scan_intensity;\nif (!validIntensities.includes(scan_intensity)) {\n  throw new Error('La intensidad debe ser: low, medium, high, stealth o full');\n}\n\n// Construir la configuraci\u00f3n final\nconst config = {\n  target: target,\n  scan_intensity: scan_intensity,\n  evasion: params.evasion !== false,\n  max_threads: parseInt(params.max_threads) || defaultConfig.max_threads,\n  timeout: parseInt(params.timeout) || defaultConfig.timeout,\n  execution_id: 'scan_' + Date.now()\n};\n\nconsole.log('Configuraci\u00f3n final:', JSON.stringify(config, null, 2));\nreturn [{ json: config }];"
+      },
+      "id": "676a90e0-f2de-4b25-80fd-6510f3d8a4c2",
+      "name": "Configure Scan Parameters",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -7680,
+        360
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar el comando para el escaneo de puertos\nconst config = items[0].json;\n\n// Log para depuraci\u00f3n\nconsole.log('Configuraci\u00f3n recibida:', JSON.stringify(config, null, 2));\n\n// Construir el comando completo\nconst command = `cd /home/kali/kali-security-tools && python3 scripts/port-discovery.py \"${config.target}\" --intensity ${config.scan_intensity} --service-detection --output \"temp/ports_${(config.target || \"unknown\").replace(/\\./g, '_')}.json\"`;\n\nconsole.log('Comando preparado:', command);\n\nreturn [{ \n  json: { \n    command: command,\n    config: config,\n    target: config.target,\n    intensity: config.scan_intensity\n  } \n}];"
+      },
+      "id": "cf10718e-ff20-4a98-92b3-4253a4637aad",
+      "name": "Prepare Command",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -7480,
+        360
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 104857600
+        }
+      },
+      "id": "878acc27-ea42-40c9-955d-2cfe67e85654",
+      "name": "Port Discovery",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -7280,
+        360
+      ],
+      "typeVersion": 1,
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "outputBinary": false,
+      "outputPath": "stdout",
+      "outputPropertyName": "output",
+      "outputPropertyPath": "output",
+      "outputPropertyType": "string",
+      "outputPropertyValue": "={{ $json.stdout }}",
+      "outputPropertyValuePath": "stdout",
+      "outputPropertyValueType": "string"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar resultados del descubrimiento de puertos\nconst result = items[0].json;\n\n// Log para depuraci\u00f3n\nconsole.log('Datos recibidos en Process Port Discovery:');\nconsole.log(JSON.stringify(result, null, 2));\n\n// Verificar que tenemos salida del comando\nif (!result.stdout) {\n  console.error('No se recibi\u00f3 salida del comando');\n  console.error('Datos completos:', JSON.stringify(result, null, 2));\n  return [{\n    json: {\n      success: false,\n      error: 'No output received from command',\n      execution_id: Date.now()\n    }\n  }];\n}\n\n// Extraer el JSON de la salida stdout\nlet scanResult;\ntry {\n  scanResult = JSON.parse(result.stdout);\n} catch (e) {\n  console.error('Error parseando JSON:', e);\n  console.error('Output que caus\u00f3 el error:', result.stdout);\n  return [{\n    json: {\n      success: false,\n      error: `Error procesando resultados del escaneo: ${e.message}`,\n      execution_id: Date.now()\n    }\n  }];\n}\n\n// Verificar si hay puertos abiertos\nconst openPorts = Array.isArray(scanResult.open_ports) ? scanResult.open_ports : [];\n\nconsole.log('Puertos encontrados:', openPorts);\nconsole.log('Tipo de openPorts:', typeof openPorts);\nconsole.log('Es array:', Array.isArray(openPorts));\n\n// Preparar resultado para enumeraci\u00f3n de servicios\nconst portDiscoveryResult = {\n  success: true,\n  target: scanResult.target,\n  execution_id: scanResult.scan_info?.timestamp || Date.now(),\n  open_ports: openPorts.map(port => port.toString()), // Asegurar que los puertos son strings\n  services: scanResult.services || {},\n  scan_config: {\n    intensity: scanResult.scan_info?.intensity || 'medium',\n    service_detection: scanResult.scan_info?.service_detection || false\n  }\n};\n\nconsole.log('Resultado procesado:');\nconsole.log(JSON.stringify(portDiscoveryResult, null, 2));\n\nreturn [{ json: portDiscoveryResult }];"
+      },
+      "id": "7edb0f48-e133-4fc2-866c-f5d4f122c8bf",
+      "name": "Process Port Discovery",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -7080,
+        360
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "0e63fdff-3470-40b2-9e9f-58ab628f3eae",
+      "name": "Check Port Discovery Success",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -6880,
+        360
+      ],
+      "typeVersion": 1,
+      "executeOnce": false,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar comando de enumeraci\u00f3n\nconst portData = items[0].json;\n\n// Log detallado de los datos recibidos\nconsole.log('Datos recibidos en Prepare Service Enum Command:');\nconsole.log(JSON.stringify(portData, null, 2));\n\nconst target = portData.target;\nconst intensity = portData.scan_config?.intensity || 'medium';\nconst openPorts = Array.isArray(portData.open_ports) ? portData.open_ports : [];\n\nconsole.log('Datos procesados:');\nconsole.log('Target:', target);\nconsole.log('Intensity:', intensity);\nconsole.log('Open Ports:', openPorts);\nconsole.log('Tipo de openPorts:', typeof openPorts);\nconsole.log('Es array:', Array.isArray(openPorts));\n\n// Verificar que tenemos puertos para escanear\nif (!openPorts.length) {\n  console.error('No se encontraron puertos abiertos en los datos recibidos');\n  console.error('Datos completos:', JSON.stringify(portData, null, 2));\n  throw new Error('No open ports found to enumerate');\n}\n\n// Configurar intensidad\nlet nmapOptions = '-sV -sC'; // Detecci\u00f3n de versiones y scripts por defecto\n\nswitch(intensity) {\n  case 'low':\n    nmapOptions += ' -T2'; // M\u00e1s lento pero m\u00e1s sigiloso\n    break;\n  case 'medium':\n    nmapOptions += ' -T3'; // Balance entre velocidad y sigilo\n    break;\n  case 'high':\n    nmapOptions += ' -T4'; // M\u00e1s r\u00e1pido\n    break;\n  case 'stealth':\n    nmapOptions += ' -T2 --max-retries 1 --max-scan-delay 10s';\n    break;\n  case 'full':\n    nmapOptions += ' -T4 -A'; // Agresivo, incluye OS detection\n    break;\n}\n\n// Construir comando\nconst ports = openPorts.join(',');\nconst cmd = `nmap ${nmapOptions} -p${ports} ${target}`;\n\nconsole.log('Comando generado:', cmd);\n\nreturn [{\n  json: {\n    command: cmd,\n    target: target,\n    intensity: intensity,\n    open_ports: openPorts\n  }\n}];"
+      },
+      "id": "10f96a4c-e6e7-4ad6-a01c-658637143e01",
+      "name": "Prepare Service Enum Command",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -6680,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 104857600
+        }
+      },
+      "id": "0aed3494-611a-4250-afe0-01398079089a",
+      "name": "Service Enumeration",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -6480,
+        260
+      ],
+      "typeVersion": 1,
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "outputBinary": false,
+      "outputPath": "output",
+      "outputPropertyName": "output",
+      "outputPropertyPath": "output",
+      "outputPropertyType": "string",
+      "outputPropertyValue": "={{ $json.output }}",
+      "outputPropertyValuePath": "output",
+      "outputPropertyValueType": "string"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Consolidar resultados finales\nconst result = items[0].json;\n\n// Log para depuraci\u00f3n\nconsole.log('Datos recibidos:', JSON.stringify(result, null, 2));\n\n// Los datos vienen del nodo Service Enumeration (salida de nmap)\n// Pero necesitamos combinarlos con los datos del port-discovery anterior\nlet serviceEnumResult;\ntry {\n  // La salida del nodo Service Enumeration es texto de nmap\n  // Necesitamos usar los datos que vienen de Process Port Discovery\n  // que est\u00e1n en el flujo pero ahora solo tenemos la salida de nmap\n  \n  // Por ahora, vamos a crear un resultado b\u00e1sico desde la salida de nmap\n  const nmapOutput = result.stdout || result.output || '';\n  console.log('Salida de nmap recibida:', nmapOutput);\n  \n  // Parsear la salida de nmap para extraer servicios\n  const services = {};\n  let target = \"unknown\";\n  \n  // Extraer el target de la salida de nmap\n  const targetMatch = nmapOutput.match(/Nmap scan report for ([^\\s]+)/i);\n  if (targetMatch) {\n    target = targetMatch[1];\n  }\n  \n  // Buscar puertos abiertos en la salida\n  const portLines = nmapOutput.split('\\n').filter(line => \n    line.includes('/tcp') && line.includes('open')\n  );\n  \n  portLines.forEach(line => {\n    const parts = line.trim().split(/\\s+/);\n    if (parts.length >= 3) {\n      const portInfo = parts[0].split('/');\n      const port = portInfo[0];\n      const protocol = portInfo[1] || 'tcp';\n      const state = parts[1];\n      const service = parts[2] || 'unknown';\n      \n      if (state === 'open') {\n        services[port] = {\n          port: parseInt(port),\n          protocol: protocol,\n          state: state,\n          service: service,\n          version: parts.slice(3).join(' ') || ''\n        };\n      }\n    }\n  });\n  \n  serviceEnumResult = {\n    target: target,\n    timestamp: new Date().toISOString(),\n    open_ports: Object.keys(services).map(p => parseInt(p)),\n    services: services,\n    scan_info: {\n      timestamp: Date.now(),\n      intensity: 'medium'\n    }\n  };\n  \n  console.log('Resultado parseado de nmap:', serviceEnumResult);\n} catch (e) {\n  console.error('Error parseando JSON:', e);\n  return [{\n    json: {\n      success: false,\n      error: 'Error procesando resultados de enumeraci\u00f3n',\n      execution_id: Date.now()\n    }\n  }];\n}\n\n// Verificar \u00e9xito de enumeraci\u00f3n\nif (!serviceEnumResult || serviceEnumResult.error) {\n  return [{\n    json: {\n      success: false,\n      error: serviceEnumResult?.error || 'Service enumeration failed',\n      execution_id: Date.now()\n    }\n  }];\n}\n\n// Procesar resultados\nconst services = serviceEnumResult.services || {};\nconst vulnerabilities = serviceEnumResult.vulnerabilities || [];\n\n// An\u00e1lisis de servicios\nconst serviceAnalysis = {\n  web_services: [],\n  database_services: [],\n  remote_access: [],\n  critical_services: [],\n  all_services: new Set()\n};\n\n// Categorizar servicios\nObject.entries(services).forEach(([port, service]) => {\n  if (service?.service) {\n    const serviceName = service.service.toLowerCase();\n    const version = service.version || 'Unknown';\n\n    serviceAnalysis.all_services.add(serviceName);\n    \n    if (['http', 'https', 'ssl/http', 'http-alt'].includes(serviceName)) {\n      serviceAnalysis.web_services.push({ port, service: serviceName, version });\n    }\n    if (['mysql', 'postgresql', 'mssql', 'oracle', 'mongodb'].includes(serviceName)) {\n      serviceAnalysis.database_services.push({ port, service: serviceName, version });\n    }\n    if (['ssh', 'telnet', 'rdp', 'vnc', 'ftp'].includes(serviceName)) {\n      serviceAnalysis.remote_access.push({ port, service: serviceName, version });\n    }\n    if (['smb', 'netbios-ssn', 'microsoft-ds', 'ldap'].includes(serviceName)) {\n      serviceAnalysis.critical_services.push({ port, service: serviceName, version });\n    }\n  }\n});\n\n// Generar reporte final\nconst finalResult = {\n  success: true,\n  scan_completed: new Date().toISOString(),\n  execution_id: serviceEnumResult.scan_info?.timestamp || Date.now(),\n  target: serviceEnumResult.target,\n  \n  summary: {\n    open_ports: serviceEnumResult.open_ports?.length || 0,\n    services_found: serviceAnalysis.all_services.size,\n    vulnerabilities_found: vulnerabilities.length\n  },\n  \n  findings: {\n    web_services: serviceAnalysis.web_services,\n    database_services: serviceAnalysis.database_services,\n    remote_access: serviceAnalysis.remote_access,\n    critical_services: serviceAnalysis.critical_services\n  },\n  \n  risk_assessment: {\n    high_risk: serviceAnalysis.database_services.length + serviceAnalysis.critical_services.length,\n    medium_risk: serviceAnalysis.remote_access.length,\n    low_risk: serviceAnalysis.web_services.length\n  },\n  \n  recommendations: [\n    serviceAnalysis.web_services.length > 0 ? 'Revisar configuraci\u00f3n de servicios web' : null,\n    serviceAnalysis.database_services.length > 0 ? 'Asegurar bases de datos expuestas' : null,\n    serviceAnalysis.remote_access.length > 0 ? 'Verificar servicios de acceso remoto' : null,\n    serviceAnalysis.critical_services.length > 0 ? 'Revisar servicios cr\u00edticos' : null\n  ].filter(Boolean),\n  \n  detailed_results: {\n    service_enumeration: serviceEnumResult,\n    service_analysis: {\n      all_services: Array.from(serviceAnalysis.all_services)\n    },\n    vulnerabilities: vulnerabilities\n  }\n};\n\nconsole.log('Resultado final:', JSON.stringify(finalResult, null, 2));\n\nreturn [{ json: finalResult }];"
+      },
+      "id": "21b4d255-849a-49c3-a7a3-44bf448692f3",
+      "name": "Generate Final Report",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -6280,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// An\u00e1lisis de clasificaci\u00f3n de Domain Controller\nconst data = items[0].json;\n\n// Extraer informaci\u00f3n relevante para la detecci\u00f3n de DC\nconst target = data.target;\nconst services = data.detailed_results?.service_enumeration?.services || {};\nconst openPorts = data.detailed_results?.service_enumeration?.open_ports || [];\n\nconsole.log('Iniciando an\u00e1lisis de DC para:', target);\nconsole.log('Puertos abiertos:', openPorts);\nconsole.log('Servicios:', Object.keys(services));\n\n// Preparar comando para detecci\u00f3n de DC\nconst portsParam = Array.isArray(openPorts) ? openPorts.join(',') : '';\nconst servicesFile = `temp/services_${(target || \"unknown\").replace(/\\./g, '_')}_${Date.now()}.json`;\nconst servicesJson = JSON.stringify(services, null, 2);\n\n// Comando usando heredoc con cat en lugar de base64 - separando los comandos y leyendo resultado\nconst outputFile = `temp/dc_analysis_${(target || \"unknown\").replace(/\\./g, '_')}.json`;\nconst command = `cd /home/kali/kali-security-tools && ` +\n               `mkdir -p temp && ` +\n               `cat > ${servicesFile} << 'SERVICES_EOF'\n${servicesJson}\nSERVICES_EOF` +\n               `\npython3 scripts/dc-detection.py \"${target}\" --ports \"${portsParam}\" --services \"${servicesFile}\" --output \"${outputFile}\" && cat \"${outputFile}\"`;\n\nconsole.log('Comando de detecci\u00f3n DC:', command.substring(0, 200) + '...');\nconsole.log('Target:', target);\nconsole.log('Servicios a analizar:', Object.keys(services).length);\n\nreturn [{ \n  json: { \n    command: command,\n    target: target,\n    services_file: servicesFile,\n    enumeration_data: data\n  } \n}];"
+      },
+      "id": "c84cabc4-be6c-4b9a-84ca-853798e3da00",
+      "name": "Prepare DC Analysis",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -6080,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 104857600
+        }
+      },
+      "id": "28dfe7e9-f353-4e40-a95e-1f26e6b873dc",
+      "name": "Execute DC Analysis",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -5880,
+        260
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar resultados del an\u00e1lisis de DC con fallback inteligente\nconst result = items[0].json;\nconst originalEnumerationData = result.enumeration_data || {};\nconst target = originalEnumerationData.target || 'unknown';\n\nconsole.log('Procesando an\u00e1lisis DC para target:', target);\nconsole.log('Resultado del comando DC:', JSON.stringify(result, null, 2));\n\nlet enhancedData;\ntry {\n  // ESTRATEGIA 1: Intentar usar la salida del script dc-detection.py\n  if (result.stdout && result.stdout.trim()) {\n    try {\n      enhancedData = JSON.parse(result.stdout);\n      console.log('\u2705 Datos completos recibidos del script DC:', enhancedData.exploitation_strategy);\n    } catch (parseError) {\n      console.log('\u274c Error parseando stdout del script DC:', parseError.message);\n      enhancedData = null;\n    }\n  }\n  \n  // ESTRATEGIA 2: Intentar leer archivo de an\u00e1lisis DC existente\n  if (!enhancedData && target !== 'unknown') {\n    const fs = require('fs');\n    const dcAnalysisFile = `temp/dc_analysis_${target.replace(/\\./g, '_')}.json`;\n    \n    try {\n      if (fs.existsSync(dcAnalysisFile)) {\n        const fileContent = fs.readFileSync(dcAnalysisFile, 'utf8');\n        enhancedData = JSON.parse(fileContent);\n        console.log('\u2705 Datos DC cargados desde archivo existente:', dcAnalysisFile);\n        console.log('\u2705 Estrategia de explotaci\u00f3n:', enhancedData.exploitation_strategy);\n      }\n    } catch (fileError) {\n      console.log('\u274c Error leyendo archivo DC:', fileError.message);\n    }\n  }\n  \n  // ESTRATEGIA 3: An\u00e1lisis inteligente basado en servicios detectados\n  if (!enhancedData) {\n    console.log('\ud83d\udd0d Realizando an\u00e1lisis DC inteligente basado en servicios...');\n    \n    const services = originalEnumerationData.detailed_results?.service_enumeration?.services || {};\n    const openPorts = originalEnumerationData.detailed_results?.service_enumeration?.open_ports || [];\n    \n    console.log('Servicios disponibles para an\u00e1lisis:', Object.keys(services));\n    console.log('Puertos abiertos:', openPorts);\n    \n    // An\u00e1lisis de puertos cr\u00edticos de AD/DC\n    const dcPorts = {\n      389: { service: \"LDAP\", weight: 25, critical: true },\n      636: { service: \"LDAPS\", weight: 25, critical: true },\n      3268: { service: \"Global Catalog\", weight: 30, critical: true },\n      3269: { service: \"Global Catalog SSL\", weight: 30, critical: true },\n      88: { service: \"Kerberos\", weight: 25, critical: true },\n      464: { service: \"Kerberos Change Password\", weight: 20, critical: true },\n      53: { service: \"DNS\", weight: 10, critical: false },\n      9389: { service: \"AD Web Services\", weight: 15, critical: true }\n    };\n    \n    let dcScore = 0;\n    let indicators = [];\n    let reasons = [];\n    let adServices = {};\n    \n    // Analizar cada puerto abierto\n    openPorts.forEach(port => {\n      if (dcPorts[port]) {\n        const portInfo = dcPorts[port];\n        dcScore += portInfo.weight;\n        indicators.push(`${portInfo.service} (${port}) detected`);\n        reasons.push(`${portInfo.service} service indicates DC functionality`);\n        \n        // Marcar servicios AD espec\u00edficos\n        if (port === 389 || port === 636) adServices.ldap = true;\n        if (port === 88 || port === 464) adServices.kerberos = true;\n        if (port === 3268 || port === 3269) adServices.global_catalog = true;\n        if (port === 53) adServices.dns = true;\n        if (port === 9389) adServices.ad_web_services = true;\n      }\n    });\n    \n    // An\u00e1lisis adicional basado en versiones de servicios\n    Object.values(services).forEach(service => {\n      const version = service.details?.version || service.version || '';\n      if (version.toLowerCase().includes('active directory')) {\n        dcScore += 15;\n        reasons.push('Microsoft Active Directory detected in service version');\n      }\n      if (version.toLowerCase().includes('microsoft') && version.toLowerCase().includes('kerberos')) {\n        dcScore += 10;\n        reasons.push('Microsoft Kerberos detected');\n      }\n    });\n    \n    // Determinar clasificaci\u00f3n\n    let machineType = 'unknown';\n    let confidence = 'low';\n    let isDomainController = false;\n    \n    if (dcScore >= 100) {\n      machineType = 'domain_controller';\n      confidence = 'high';\n      isDomainController = true;\n      reasons.push('High confidence DC classification based on service analysis');\n    } else if (dcScore >= 50) {\n      machineType = 'likely_domain_controller';\n      confidence = 'medium';\n      isDomainController = true;\n      reasons.push('Medium confidence DC classification');\n    } else if (dcScore >= 25) {\n      machineType = 'possible_domain_controller';\n      confidence = 'low';\n      isDomainController = false;\n      reasons.push('Low confidence DC classification');\n    }\n    \n    console.log(`\ud83c\udfaf An\u00e1lisis DC completado: ${machineType} (score: ${dcScore}, confidence: ${confidence})`);\n    \n    // Crear datos mejorados con an\u00e1lisis DC\n    enhancedData = {\n      ...originalEnumerationData,\n      dc_analysis: {\n        target: target,\n        is_domain_controller: isDomainController,\n        confidence: confidence,\n        machine_type: machineType,\n        score: dcScore,\n        indicators: indicators,\n        reasons: reasons,\n        ad_services: adServices,\n        timestamp: new Date().toISOString()\n      },\n      machine_classification: {\n        type: machineType,\n        is_domain_controller: isDomainController,\n        confidence: confidence,\n        score: dcScore,\n        analysis_timestamp: new Date().toISOString()\n      },\n      exploitation_strategy: (machineType === 'domain_controller' || machineType === 'likely_domain_controller') ? 'active_directory' : 'standard'\n    };\n  }\n  \n  console.log('\ud83d\udcca An\u00e1lisis DC final completado:');\n  console.log('- Target:', enhancedData.target || target);\n  console.log('- Tipo de m\u00e1quina:', enhancedData.machine_classification?.type);\n  console.log('- Es DC:', enhancedData.machine_classification?.is_domain_controller);\n  console.log('- Estrategia:', enhancedData.exploitation_strategy);\n  console.log('- Confianza:', enhancedData.machine_classification?.confidence);\n  console.log('- Score:', enhancedData.machine_classification?.score);\n  \n} catch (e) {\n  console.error('\u274c Error cr\u00edtico en an\u00e1lisis DC:', e);\n  \n  // Fallback de emergencia\n  enhancedData = {\n    ...originalEnumerationData,\n    dc_analysis: { \n      error: e.message,\n      target: target,\n      is_domain_controller: false,\n      confidence: 'low',\n      machine_type: 'unknown',\n      score: 0\n    },\n    machine_classification: {\n      type: 'unknown',\n      is_domain_controller: false,\n      confidence: 'low',\n      score: 0,\n      analysis_timestamp: new Date().toISOString()\n    },\n    exploitation_strategy: 'standard'\n  };\n}\n\nreturn [{ json: enhancedData }];"
+      },
+      "id": "fa3816a8-970f-4873-9d35-5080b40f0452",
+      "name": "Analyze DC Classification",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -5680,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Buscar exploits en ExploitDB para los servicios encontrados\nconst data = items[0].json;\n\n// Extraer servicios del resultado de enumeraci\u00f3n\nconst services = data.detailed_results?.service_enumeration?.services || {};\nconst target = data.target;\n\nconsole.log('Buscando exploits para:', target);\nconsole.log('Servicios a analizar:', Object.keys(services).length);\n\n// Preparar comando para b\u00fasqueda de exploits\nconst servicesFile = `temp/services_${(target || \"unknown\").replace(/\\./g, '_')}_${Date.now()}.json`;\nconst servicesJson = JSON.stringify(services, null, 2);\n\n// Comando para buscar exploits\nconst outputFile = `temp/exploitdb_scan_${(target || \"unknown\").replace(/\\./g, '_')}.json`;\nconst command = `cd /home/kali/kali-security-tools && ` +\n               `mkdir -p temp && ` +\n               `cat > ${servicesFile} << 'SERVICES_EOF'\n${servicesJson}\nSERVICES_EOF` +\n               `\npython3 scripts/exploitdb-integration.py \"${target}\" --services \"${servicesFile}\" --output \"${outputFile}\"`;\n\nconsole.log('Comando de b\u00fasqueda de exploits:', command.substring(0, 200) + '...');\n\nreturn [{ \n  json: { \n    command: command,\n    target: target,\n    services_file: servicesFile,\n    enumeration_data: data\n  } \n}];"
+      },
+      "id": "4feadc69-3e84-42d5-82ed-26708c2677a7",
+      "name": "Prepare ExploitDB Search",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -5520,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 524288000
+        }
+      },
+      "id": "2f228715-b473-4d5e-af08-a4c9d432651f",
+      "name": "Execute ExploitDB Search",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -5360,
+        260
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar resultados de b\u00fasqueda en ExploitDB\nconst result = items[0].json;\nconst originalData = result.enumeration_data || {};\n\nconsole.log('Procesando resultados de ExploitDB:', JSON.stringify(result, null, 2));\n\nlet enhancedData;\ntry {\n  if (result.stdout && result.stdout.trim()) {\n    // El script exploitdb-integration.py devuelve los resultados\n    let stdout = result.stdout.trim();\n    \n    // Si hay m\u00faltiples objetos JSON (bug previo), tomar solo el primero\n    if (stdout.includes('}\\n{')) {\n      const firstJsonEnd = stdout.indexOf('}\\n{') + 1;\n      stdout = stdout.substring(0, firstJsonEnd);\n      console.log('M\u00faltiples JSONs detectados, usando solo el primero');\n    }\n    \n    const exploitdbResults = JSON.parse(stdout);\n    \n    // Combinar resultados con datos originales\n    enhancedData = {\n      ...originalData,\n      exploitdb_analysis: {\n        timestamp: new Date().toISOString(),\n        exploits_found: exploitdbResults.exploits_found || 0,\n        exploits: exploitdbResults.exploits || [],\n        evidence_file: exploitdbResults.evidence_file\n      }\n    };\n    \n    console.log('Exploits encontrados:', enhancedData.exploitdb_analysis.exploits_found);\n  } else {\n    // Fallback si no hay resultados\n    enhancedData = {\n      ...originalData,\n      exploitdb_analysis: {\n        timestamp: new Date().toISOString(),\n        exploits_found: 0,\n        exploits: [],\n        error: 'No se encontraron resultados de ExploitDB'\n      }\n    };\n  }\n} catch (e) {\n  console.error('Error procesando resultados de ExploitDB:', e);\n  \n  enhancedData = {\n    ...originalData,\n    exploitdb_analysis: {\n      timestamp: new Date().toISOString(),\n      exploits_found: 0,\n      exploits: [],\n      error: e.message\n    }\n  };\n}\n\nreturn [{ json: enhancedData }];"
+      },
+      "id": "ce9a32e8-a245-4234-a374-f4fce20e8ee4",
+      "name": "Process ExploitDB Results",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -5200,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const enumResult = items[0].json; console.log('\ud83d\udd04 Convert to Exploitation Format - Datos recibidos:', JSON.stringify(enumResult, null, 2)); const dcClassification = enumResult.machine_classification || {}; const dcAnalysis = enumResult.dc_analysis || {}; const exploitationStrategy = enumResult.exploitation_strategy || 'standard'; console.log('\ud83d\udcca Datos DC preservados:'); console.log('- machine_classification:', dcClassification); console.log('- dc_analysis:', dcAnalysis); console.log('- exploitation_strategy:', exploitationStrategy); const services = {}; let sourceServices = null; if (enumResult.detailed_results?.service_enumeration?.services) { sourceServices = enumResult.detailed_results.service_enumeration.services; console.log('\u2705 Servicios encontrados en detailed_results.service_enumeration.services:', Object.keys(sourceServices).length); } else if (enumResult.detailed_results?.services) { sourceServices = enumResult.detailed_results.services; console.log('\u2705 Servicios encontrados en detailed_results.services:', Object.keys(sourceServices).length); } else if (enumResult.services) { sourceServices = enumResult.services; console.log('\u2705 Servicios encontrados en enumResult.services:', Object.keys(sourceServices).length); } else { console.log('\u274c No se encontraron servicios en ubicaciones esperadas'); } if (sourceServices && typeof sourceServices === 'object') { Object.entries(sourceServices).forEach(([key, serviceData]) => { let port, serviceName; if (key.includes(':')) { [serviceName, port] = key.split(':'); } else { port = key; serviceName = serviceData.service || serviceData.service_name || serviceData.name || 'unknown'; } const serviceKey = `${serviceName}:${port}`; services[serviceKey] = { service_name: serviceName, port: parseInt(port), state: serviceData.state || 'open', protocol: serviceData.protocol || 'tcp', details: { version: serviceData.version || serviceData.details?.version || '', product: serviceData.product || serviceData.details?.product || '', extra_info: serviceData.extrainfo || serviceData.extra_info || serviceData.details?.extra_info || '' } }; }); } const target = enumResult.target || enumResult.enumeration_results?.target || enumResult.detailed_results?.service_enumeration?.target || 'unknown'; console.log('\ud83c\udfaf Target determinado:', target); console.log('\ud83d\udcc8 Servicios procesados:', Object.keys(services).length); const exploitationData = { enumeration_results: { target: target, hostname: enumResult.hostname || null, scan_timestamp: enumResult.scan_timestamp || enumResult.timestamp || new Date().toISOString(), detailed_results: { service_enumeration: { services: services, target: target, open_ports: Object.values(services).map(s => s.port), vulnerability_count: 0, exploit_count: 0 } }, machine_classification: dcClassification, dc_analysis: dcAnalysis, vulnerabilities: [], exploits: [] }, intensity: enumResult.intensity || enumResult.scan_intensity || 'medium', safe_mode: true, enabled_tools: ['nuclei', 'gobuster', 'nikto', 'hydra', 'enum4linux'], exploitation_strategy: exploitationStrategy, machine_type: dcClassification.type || 'unknown', is_domain_controller: dcClassification.is_domain_controller || dcAnalysis.is_domain_controller || false, confidence_level: dcClassification.confidence || dcAnalysis.confidence || 'low' }; console.log('\ud83d\ude80 Datos finales para explotaci\u00f3n:'); console.log('- Target:', exploitationData.enumeration_results.target); console.log('- Estrategia de explotaci\u00f3n:', exploitationData.exploitation_strategy); console.log('- Tipo de m\u00e1quina:', exploitationData.machine_type); console.log('- Es DC:', exploitationData.is_domain_controller); console.log('- Confianza:', exploitationData.confidence_level); console.log('- Servicios:', Object.keys(services).length); console.log('- Puertos abiertos:', exploitationData.enumeration_results.detailed_results.service_enumeration.open_ports); if (exploitationData.exploitation_strategy === 'active_directory') { console.log('\u2705 SUCCESS: Workflow tomar\u00e1 rama AD (TRUE)'); } else { console.log('\u274c WARNING: Workflow tomar\u00e1 rama est\u00e1ndar (FALSE)'); } return [{ json: exploitationData }];"
+      },
+      "id": "50ce8ffd-a845-4b9b-9b64-bda725703a9b",
+      "name": "Convert to Exploitation Format",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -5020,
+        260
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.exploitation_strategy }}",
+              "value2": "active_directory"
+            }
+          ]
+        }
+      },
+      "id": "46371d22-e991-4988-8e56-3d2dc8096e93",
+      "name": "Check AD Environment",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -4840,
+        260
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar comando de explotaci\u00f3n est\u00e1ndar con nuclei y evidencias\nconst data = items[0].json;\n\n// Buscar target en m\u00faltiples ubicaciones posibles\nlet target = data.enumeration_results?.target || \n             data.target || \n             data.detailed_results?.service_enumeration?.target ||\n             'unknown';\n\n// Si a\u00fan es unknown, intentar extraer de otras fuentes\nif (target === 'unknown') {\n  // Buscar en findings si existen\n  if (data.findings && (data.findings.web_services?.length > 0 || \n                       data.findings.database_services?.length > 0 ||\n                       data.findings.remote_access?.length > 0 ||\n                       data.findings.critical_services?.length > 0)) {\n    console.log('Target unknown pero hay findings, continuando con explotaci\u00f3n b\u00e1sica');\n  } else {\n    console.error('No se pudo determinar el target y no hay servicios para explotar');\n    console.log('Usando fallback con localhost para continuar el workflow');\n    target = '127.0.0.1'; // Fallback para evitar que el workflow falle\n  }\n}\n\n// CRITICAL FIX: Buscar intensidad en m\u00faltiples ubicaciones posibles\nconst intensity = data.intensity || \n                 data.scan_intensity ||\n                 data.scan_config?.intensity ||\n                 data.detailed_results?.service_enumeration?.scan_info?.intensity ||\n                 data.enumeration_results?.scan_config?.intensity ||\n                 'medium';\n\nconsole.log('Intensidad determinada:', intensity);\nconsole.log('Fuentes de intensidad disponibles:', {\n  'data.intensity': data.intensity,\n  'data.scan_intensity': data.scan_intensity,\n  'data.scan_config?.intensity': data.scan_config?.intensity\n});\n\nconst timestamp = new Date().toISOString().replace(/[^0-9]/g, '').substring(0, 14);\n\n// Extraer puertos para explotaci\u00f3n espec\u00edfica\nconst services = data.enumeration_results?.detailed_results?.service_enumeration?.services || \n                data.detailed_results?.service_enumeration?.services ||\n                {};\nconst openPorts = Object.values(services).map(s => s.port).filter(p => p).join(',');\n\nconsole.log('Preparando explotaci\u00f3n est\u00e1ndar para:', target);\nconsole.log('Puertos abiertos:', openPorts);\nconsole.log('Intensidad:', intensity);\nconsole.log('Servicios encontrados:', Object.keys(services).length);\n\n// Estrategia: Si tenemos un archivo de enumeraci\u00f3n, usarlo; si no, pasar el target directamente\nlet command;\nif (target !== 'unknown') {\n  const dcAnalysisFile = `temp/dc_analysis_${target.replace(/\\./g, '_')}.json`;\n  console.log('Archivo de enumeraci\u00f3n:', dcAnalysisFile);\n  \n  command = `cd /home/kali/kali-security-tools && ` +\n           `python3 scripts/exploit-automation.py \"${dcAnalysisFile}\" ` +\n           `--intensity \"${intensity}\" ` +\n           `--log-level INFO ` +\n           `--output \"temp/exploitation_${target.replace(/\\./g, '_')}_${timestamp}.json\"`;\n} else {\n  // Fallback: usar target directamente sin archivo de enumeraci\u00f3n\n  console.log('Usando modo fallback sin archivo de enumeraci\u00f3n');\n  command = `cd /home/kali/kali-security-tools && ` +\n           `python3 scripts/exploit-automation.py \"127.0.0.1\" ` +\n           `--intensity \"${intensity}\" ` +\n           `--log-level INFO ` +\n           `--output \"temp/exploitation_fallback_${timestamp}.json\"`;\n}\n\nconsole.log('Comando de explotaci\u00f3n:', command);\n\nreturn [{ \n  json: { \n    command: command, \n    target: target, \n    intensity: intensity,\n    exploitation_type: 'standard_with_nuclei',\n    services_count: Object.keys(services).length\n  } \n}];"
+      },
+      "id": "1e3cb5e3-1f27-4678-9447-a863a21810e0",
+      "name": "Prepare Enhanced Exploitation",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -4620,
+        360
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 104857600
+        }
+      },
+      "id": "2489dcd1-6ded-46ea-83cb-70560945a54b",
+      "name": "Execute Exploitation",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -4420,
+        360
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar comando de explotaci\u00f3n AD con autobloody\nconst data = items[0].json;\nconst target = data.enumeration_results.target;\n\n// CRITICAL FIX: Buscar intensidad en m\u00faltiples ubicaciones posibles\nconst intensity = data.intensity || \n                 data.scan_intensity ||\n                 data.scan_config?.intensity ||\n                 data.detailed_results?.service_enumeration?.scan_info?.intensity ||\n                 data.enumeration_results?.scan_config?.intensity ||\n                 'medium';\n\nconsole.log('Intensidad AD determinada:', intensity);\nconst timestamp = new Date().toISOString().replace(/[^0-9]/g, '').substring(0, 14);\n\n// Extraer informaci\u00f3n de dominio si est\u00e1 disponible\nconst dcAnalysis = data.enumeration_results?.dc_analysis || {};\nconst machineType = data.enumeration_results?.machine_classification?.type || 'unknown';\n\nconsole.log('Preparando explotaci\u00f3n AD para:', target);\nconsole.log('Tipo de m\u00e1quina:', machineType);\nconsole.log('An\u00e1lisis DC:', dcAnalysis);\n\n// CORRECCI\u00d3N: Comando integrado de AD que pasa archivo de enumeraci\u00f3n\nconst dcAnalysisFile = `temp/dc_analysis_${(target || \"unknown\").replace(/\\./g, '_')}.json`;\nconsole.log('Archivo de enumeraci\u00f3n AD:', dcAnalysisFile);\n\nconst command = `cd /home/kali/kali-security-tools && ` +\n               `python3 scripts/exploit-automation.py \"${dcAnalysisFile}\" ` +\n               `--intensity \"${intensity}\" ` +\n               `--log-level INFO ` +\n               `--output \"temp/ad_exploitation_${(target || \"unknown\").replace(/\\./g, '_')}_${timestamp}.json\" && ` +\n               `python3 scripts/ad-enumeration.py \"${target}\" ` +\n               `--output-dir \"results/ad_enumeration\" ` +\n               `--log-level INFO`;\n\nconsole.log('Comando AD completo:', command);\n\nreturn [{ \n  json: { \n    command: command, \n    target: target, \n    intensity: intensity,\n    exploitation_type: 'active_directory_enhanced',\n    machine_type: machineType\n  } \n}];"
+      },
+      "id": "024afdef-7d39-49c2-bf35-3a7a2a74b6c4",
+      "name": "Prepare AD Enhanced Command",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -4620,
+        140
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 104857600
+        }
+      },
+      "id": "dcfa5a3c-341e-435d-b62a-3d778f169539",
+      "name": "Execute AD Exploitation",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -4420,
+        140
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar resultados de explotaci\u00f3n est\u00e1ndar con evidencias\nconst result = items[0].json;\n\nconsole.log('Procesando resultados de explotaci\u00f3n con nuclei:', JSON.stringify(result, null, 2));\n\n// CRITICAL FIX: Extraer el target del comando original o de los datos previos\nlet targetIP = result.target || 'unknown';\n\n// Buscar el target en el comando ejecutado\nif (targetIP === 'unknown' && result.command && typeof result.command === 'string') {\n  const targetMatch = result.command.match(/scripts\\/exploit-automation\\.py\\s+\"([^\"]+)\"/);\n  if (targetMatch) {\n    targetIP = targetMatch[1];\n    console.log('Target extra\u00eddo del comando:', targetIP);\n  }\n}\n\n// Tambi\u00e9n buscar en la salida del script\nif (targetIP === 'unknown' && result.stdout && typeof result.stdout === 'string') {\n  const outputTargetMatch = result.stdout.match(/Target:\\s*([^\\s\\n]+)/);\n  if (outputTargetMatch) {\n    targetIP = outputTargetMatch[1];\n    console.log('Target extra\u00eddo de la salida:', targetIP);\n  }\n}\n\n// Buscar en datos heredados adicionales\nif (targetIP === 'unknown' && result.enumeration_results && result.enumeration_results.target) {\n  targetIP = result.enumeration_results.target;\n  console.log('Target extra\u00eddo de enumeration_results:', targetIP);\n}\n\nconsole.log('Target final determinado:', targetIP);\n\nlet exploitationResults;\ntry {\n  // Intentar parsear la salida JSON del script\n  const output = result.stdout || '';\n  \n  // Buscar el JSON en la salida\n  if (output.includes('{')) {\n    const jsonStart = output.lastIndexOf('{');\n    const jsonPart = output.substring(jsonStart);\n    exploitationResults = JSON.parse(jsonPart);\n    \n    // Asegurar que el target est\u00e9 en los resultados parseados\n    if (!exploitationResults.target || exploitationResults.target === 'unknown') {\n      exploitationResults.target = targetIP;\n    }\n  } else {\n    // Crear resultado b\u00e1sico si no hay JSON\n    exploitationResults = {\n      target: targetIP,\n      summary: {\n        total_services: 0,\n        successful_exploits: 0,\n        vulnerabilities_found: 0,\n        credentials_discovered: 0\n      },\n      success: result.exitCode === 0\n    };\n  }\n} catch (e) {\n  console.error('Error parseando resultados:', e);\n  console.error('Output que caus\u00f3 error:', result.stdout);\n  exploitationResults = {\n    success: false,\n    error: 'Error processing exploitation results',\n    raw_output: result.stdout || result,\n    target: targetIP\n  };\n}\n\n// Estructurar resultados con informaci\u00f3n de evidencias\nconst processedResults = {\n  exploitation_type: 'standard_enhanced',\n  target: exploitationResults.target,\n  timestamp: new Date().toISOString(),\n  success: exploitationResults.success !== false,\n  \n  // M\u00e9tricas principales\n  services_tested: exploitationResults.summary?.total_services || 0,\n  vulnerabilities_found: exploitationResults.summary?.vulnerabilities_found || 0,\n  exploits_successful: exploitationResults.summary?.successful_exploits || 0,\n  credentials_discovered: exploitationResults.summary?.credentials_discovered || 0,\n  \n  // Informaci\u00f3n de evidencias\n  evidence_collected: true,\n  evidence_location: `results/evidence/${exploitationResults.target}`,\n  report_generated: exploitationResults.report_path ? true : false,\n  \n  // Herramientas utilizadas\n  tools_used: ['nuclei', 'gobuster', 'nikto', 'nmap'],\n  \n  // Resultados completos\n  detailed_results: exploitationResults\n};\n\nconsole.log('Resultados procesados:', JSON.stringify(processedResults, null, 2));\nconsole.log('Evidencias colectadas:', processedResults.evidence_collected);\nconsole.log('Vulnerabilidades encontradas:', processedResults.vulnerabilities_found);\nconsole.log('Target final en resultados:', processedResults.target);\n\nreturn [{ json: processedResults }];"
+      },
+      "id": "a6408542-80d2-4a14-b419-4aba7fd683e6",
+      "name": "Process Enhanced Results",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -4220,
+        360
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar resultados de explotaci\u00f3n AD con autobloody\nconst result = items[0].json;\n\nconsole.log('Procesando resultados AD con autobloody:', JSON.stringify(result, null, 2));\n\nlet adResults;\nlet adEnumResults;\n\ntry {\n  const output = result.stdout || '';\n  \n  // El comando ejecuta dos scripts, separar las salidas\n  // Buscar resultados de exploit-automation.py\n  if (output.includes('=== Exploitation Summary ===')) {\n    const exploitStart = output.indexOf('=== Exploitation Summary ===');\n    const exploitSection = output.substring(0, exploitStart);\n    \n    if (exploitSection.includes('{')) {\n      const jsonStart = exploitSection.lastIndexOf('{');\n      const jsonPart = exploitSection.substring(jsonStart, exploitStart);\n      adResults = JSON.parse(jsonPart);\n    }\n  }\n  \n  // Buscar resultados de ad-enumeration.py\n  if (output.includes('=== AD Enumeration Summary ===')) {\n    const adStart = output.indexOf('=== AD Enumeration Summary ===');\n    const adSection = output.substring(adStart);\n    \n    // Extraer m\u00e9tricas del resumen\n    const dcMatch = adSection.match(/Domain Controller: (YES|NO)/);\n    const servicesMatch = adSection.match(/Services Found: (\\d+)/);\n    const vulnMatch = adSection.match(/Vulnerabilities: (\\d+)/);\n    const autobloodyMatch = adSection.match(/Autobloody Success: (YES|NO)/);\n    const usersMatch = adSection.match(/Users Found: (\\d+)/);\n    const groupsMatch = adSection.match(/Groups Found: (\\d+)/);\n    \n    adEnumResults = {\n      is_domain_controller: dcMatch ? dcMatch[1] === 'YES' : false,\n      services_found: servicesMatch ? parseInt(servicesMatch[1]) : 0,\n      vulnerabilities: vulnMatch ? parseInt(vulnMatch[1]) : 0,\n      autobloody_success: autobloodyMatch ? autobloodyMatch[1] === 'YES' : false,\n      users_found: usersMatch ? parseInt(usersMatch[1]) : 0,\n      groups_found: groupsMatch ? parseInt(groupsMatch[1]) : 0\n    };\n  }\n  \n} catch (e) {\n  console.error('Error parseando resultados AD:', e);\n  console.error('Output completo:', result.stdout);\n}\n\n// Crear resultados por defecto si el parseo fall\u00f3\nif (!adResults) {\n  adResults = {\n    target: result.target || 'unknown',\n    summary: {\n      total_services: 0,\n      successful_exploits: 0,\n      vulnerabilities_found: 0,\n      credentials_discovered: 0\n    },\n    success: result.exitCode === 0\n  };\n}\n\nif (!adEnumResults) {\n  adEnumResults = {\n    is_domain_controller: false,\n    services_found: 0,\n    vulnerabilities: 0,\n    autobloody_success: false,\n    users_found: 0,\n    groups_found: 0\n  };\n}\n\n// Estructurar resultados AD completos\nconst processedResults = {\n  exploitation_type: 'active_directory_enhanced',\n  target: adResults.target,\n  timestamp: new Date().toISOString(),\n  success: adResults.success !== false,\n  \n  // M\u00e9tricas de explotaci\u00f3n\n  services_tested: adResults.summary?.total_services || 0,\n  vulnerabilities_found: adResults.summary?.vulnerabilities_found || adEnumResults.vulnerabilities || 0,\n  exploits_successful: adResults.summary?.successful_exploits || 0,\n  credentials_discovered: adResults.summary?.credentials_discovered || 0, // M\u00e9tricas espec\u00edficas de AD\n  is_domain_controller: adEnumResults.is_domain_controller,\n  autobloody_success: adEnumResults.autobloody_success,\n  users_enumerated: adEnumResults.users_found,\n  groups_enumerated: adEnumResults.groups_found,\n  \n  // Informaci\u00f3n de evidencias\n  evidence_collected: true,\n  evidence_location: `results/evidence/${adResults.target || 'unknown'}`,\n  ad_evidence_location: 'results/ad_enumeration',\n  \n  // Herramientas utilizadas\n  tools_used: ['nuclei', 'gobuster', 'nikto', 'autobloody', 'ldapsearch', 'smbclient', 'enum4linux'],\n  \n  // Resultados completos\n  detailed_exploitation: adResults,\n  detailed_enumeration: adEnumResults\n};\n\nconsole.log('Resultados AD procesados:', JSON.stringify(processedResults, null, 2));\nconsole.log('DC detectado:', processedResults.is_domain_controller);\nconsole.log('Autobloody exitoso:', processedResults.autobloody_success);\nconsole.log('Usuarios encontrados:', processedResults.users_enumerated);\n\nreturn [{ json: processedResults }];"
+      },
+      "id": "48143fd9-6d06-4139-8016-41057d2ff48a",
+      "name": "Process AD Enhanced Results",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -4220,
+        140
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar comando para generar reporte HTML de evidencias\nconst exploitationResult = items[0].json;\n\nconsole.log('Preparando generaci\u00f3n de reporte de evidencias:', JSON.stringify(exploitationResult, null, 2));\n\n// ENHANCED IP EXTRACTION: M\u00faltiples estrategias para extraer la IP del target\nlet target = \"unknown\";\n\n// Estrategia 1: Target directo\nif (exploitationResult.target && exploitationResult.target !== 'unknown') {\n  target = exploitationResult.target;\n  console.log('Target extra\u00eddo directamente:', target);\n}\n\n// Estrategia 2: Buscar en detailed_results (datos de enumeraci\u00f3n)\nif (target === 'unknown' && exploitationResult.detailed_results?.service_enumeration?.target) {\n  target = exploitationResult.detailed_results.service_enumeration.target;\n  console.log('Target extra\u00eddo de service_enumeration:', target);\n}\n\n// Estrategia 3: Buscar en detailed_results.target\nif (target === 'unknown' && exploitationResult.detailed_results?.target) {\n  target = exploitationResult.detailed_results.target;\n  console.log('Target extra\u00eddo de detailed_results:', target);\n}\n\n// Estrategia 4: Buscar en detailed_exploitation (para AD)\nif (target === 'unknown' && exploitationResult.detailed_exploitation?.target) {\n  target = exploitationResult.detailed_exploitation.target;\n  console.log('Target extra\u00eddo de detailed_exploitation:', target);\n}\n\n// Estrategia 5: Extraer de la ubicaci\u00f3n de evidencias\nif (target === 'unknown' && exploitationResult.evidence_location) {\n  const locationMatch = exploitationResult.evidence_location.match(/results\\/evidence\\/([^\\/]+)/);\n  if (locationMatch && locationMatch[1] !== 'unknown') {\n    target = locationMatch[1];\n    console.log('Target extra\u00eddo de evidence_location:', target);\n  }\n}\n\n// Estrategia 6: Buscar en archivos temporales (formato dc_analysis_IP.json)\nif (target === 'unknown') {\n  // Buscar patrones de IP en nombres de archivos temporales\n  const fs = require('fs');\n  try {\n    const tempFiles = fs.readdirSync('/home/kali/kali-security-tools/temp');\n    const dcAnalysisFile = tempFiles.find(file => file.startsWith('dc_analysis_') && file.endsWith('.json'));\n    if (dcAnalysisFile) {\n      const ipMatch = dcAnalysisFile.match(/dc_analysis_([0-9_]+)\\.json/);\n      if (ipMatch) {\n        target = ipMatch[1].replace(/_/g, '.');\n        console.log('Target extra\u00eddo de archivo temporal:', target);\n      }\n    }\n  } catch (e) {\n    console.log('No se pudo leer directorio temp:', e.message);\n  }\n}\n\n// Estrategia 7: Buscar en archivos de evidencia\nif (target === 'unknown') {\n  const fs = require('fs');\n  try {\n    const evidenceDir = '/home/kali/kali-security-tools/results/evidence';\n    if (fs.existsSync(evidenceDir)) {\n      const evidenceFiles = fs.readdirSync(evidenceDir);\n      // Buscar archivos que contengan IPs en el nombre\n      const ipFile = evidenceFiles.find(file => {\n        const ipMatch = file.match(/([0-9]{1,3}[_\\.]){3}[0-9]{1,3}/);\n        return ipMatch;\n      });\n      if (ipFile) {\n        const ipMatch = ipFile.match(/([0-9]{1,3}[_\\.]){3}[0-9]{1,3}/);\n        if (ipMatch) {\n          target = ipMatch[0].replace(/_/g, '.');\n          console.log('Target extra\u00eddo de archivos de evidencia:', target);\n        }\n      }\n    }\n  } catch (e) {\n    console.log('No se pudo leer directorio de evidencias:', e.message);\n  }\n}\n\n// Validaci\u00f3n final de IP\nif (target !== 'unknown') {\n  // Validar que sea una IP v\u00e1lida\n  const ipRegex = /^([0-9]{1,3}\\.){3}[0-9]{1,3}$/;\n  if (!ipRegex.test(target)) {\n    console.log('Target no es una IP v\u00e1lida, intentando limpiar:', target);\n    // Intentar extraer IP del string\n    const ipMatch = target.match(/([0-9]{1,3}\\.){3}[0-9]{1,3}/);\n    if (ipMatch) {\n      target = ipMatch[0];\n      console.log('IP extra\u00edda y limpiada:', target);\n    } else {\n      console.log('No se pudo extraer IP v\u00e1lida, usando valor original');\n    }\n  }\n}\n\nconsole.log('Target final para evidence-reporter:', target);\nconst timestamp = new Date().toISOString().replace(/[^0-9]/g, '').substring(0, 14);\n\n// Comando para generar reporte de evidencias HTML y JSON\n// CRITICAL: Usar la IP extra\u00edda como primer argumento, NO el archivo JSON\nconst command = `cd /home/kali/kali-security-tools && ` +\n               `python3 scripts/evidence-reporter.py \"${target}\" ` +\n               `--evidence-dir \"results/evidence\" ` +\n               `--output-dir \"results/reports\" ` +\n               `--log-level INFO`;\n\nconsole.log('Comando de reporte:', command);\n\n// Validaci\u00f3n adicional\nif (target === 'unknown') {\n  console.error('ADVERTENCIA: No se pudo extraer IP del target, usando \"unknown\"');\n  console.error('Datos de explotaci\u00f3n completos:', JSON.stringify(exploitationResult, null, 2));\n}\n\nreturn [{ \n  json: { \n    command: command,\n    target: target,\n    exploitation_result: exploitationResult,\n    timestamp: timestamp,\n    ip_extraction_successful: target !== 'unknown'\n  } \n}];"
+      },
+      "id": "13985145-c33e-4230-bf39-57839e921d71",
+      "name": "Prepare Evidence Report",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -3960,
+        240
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}",
+        "options": {
+          "maxBuffer": 1073741824
+        }
+      },
+      "id": "0a6e53f1-fb93-45fd-9acc-f022ee4b5097",
+      "name": "Execute Evidence Report",
+      "type": "n8n-nodes-base.executeCommand",
+      "position": [
+        -3760,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar reporte final de evidencias\nconst reportResult = items[0].json;\nconst exploitationData = reportResult.exploitation_result || {};\n\nconsole.log('Procesando reporte de evidencias:', JSON.stringify(reportResult, null, 2));\n\n// Analizar informaci\u00f3n del reporte de evidencias\nlet reportInfo = {\n  report_generated: false,\n  html_report: null,\n  json_report: null,\n  evidence_summary: {}\n};\n\nif (reportResult.stdout) {\n  const output = reportResult.stdout;\n  \n  // Extraer rutas de archivos de reporte\n  const htmlMatch = output.match(/HTML: ([^\\n]+)/);\n  const jsonMatch = output.match(/JSON: ([^\\n]+)/);\n  \n  if (htmlMatch) {\n    reportInfo.html_report = htmlMatch[1];\n    reportInfo.report_generated = true;\n  }\n  \n  if (jsonMatch) {\n    reportInfo.json_report = jsonMatch[1];\n  }\n  \n  // Extraer m\u00e9tricas del reporte\n  const evidenceMatch = output.match(/Evidence Files Analyzed: (\\d+)/);\n  const vulnMatch = output.match(/Total Vulnerabilities: (\\d+)/);\n  const riskMatch = output.match(/Risk Level: (\\w+)/);\n  const servicesMatch = output.match(/Services Tested: (\\d+)/);\n  const credsMatch = output.match(/Credentials Found: (\\d+)/);\n  \n  reportInfo.evidence_summary = {\n    evidence_files_analyzed: evidenceMatch ? parseInt(evidenceMatch[1]) : 0,\n    total_vulnerabilities: vulnMatch ? parseInt(vulnMatch[1]) : 0,\n    risk_level: riskMatch ? riskMatch[1] : 'UNKNOWN',\n    services_tested: servicesMatch ? parseInt(servicesMatch[1]) : 0,\n    credentials_found: credsMatch ? parseInt(credsMatch[1]) : 0\n  };\n}\n\n// Generar identificadores del reporte\nconst timestamp = new Date().toISOString();\nconst reportId = `AUDIT_${(exploitationData.target || reportResult.target || \"unknown\").replace(/[^0-9]/g, '').substring(0, 14)}`;\n\n// Construir reporte final consolidado\nconst finalReport = {\n  report_id: reportId,\n  timestamp: timestamp,\n  target: exploitationData.target || reportResult.target,\n  \n  executive_summary: {\n    assessment_type: exploitationData.exploitation_type || 'comprehensive',\n    assessment_completed: true,\n    evidence_collected: reportInfo.report_generated,\n    total_vulnerabilities: reportInfo.evidence_summary.total_vulnerabilities || exploitationData.vulnerabilities_found || 0,\n    risk_level: reportInfo.evidence_summary.risk_level || (exploitationData.exploits_successful > 0 ? 'HIGH' : exploitationData.vulnerabilities_found > 0 ? 'MEDIUM' : 'LOW'),\n    services_tested: reportInfo.evidence_summary.services_tested || exploitationData.services_tested || 0,\n    credentials_discovered: reportInfo.evidence_summary.credentials_found || exploitationData.credentials_discovered || 0\n  },\n  \n  technical_summary: {\n    enumeration_completed: true,\n    exploitation_completed: exploitationData.success !== false,\n    evidence_files_collected: reportInfo.evidence_summary.evidence_files_analyzed || 0,\n    tools_used: exploitationData.tools_used || ['nmap', 'nuclei'],\n    ...(exploitationData.exploitation_type?.includes('active_directory') && {\n      ad_environment_detected: exploitationData.is_domain_controller || false,\n      autobloody_successful: exploitationData.autobloody_success || false,\n      users_enumerated: exploitationData.users_enumerated || 0,\n      groups_enumerated: exploitationData.groups_enumerated || 0\n    })\n  },\n  \n  evidence_locations: {\n    evidence_directory: exploitationData.evidence_location || `results/evidence/${exploitationData.target}`,\n    html_report: reportInfo.html_report,\n    json_report: reportInfo.json_report,\n    ...(exploitationData.ad_evidence_location && {\n      ad_evidence_directory: exploitationData.ad_evidence_location\n    })\n  },\n  \n  recommendations: [\n    reportInfo.evidence_summary.total_vulnerabilities > 0 ? \n      `URGENTE: Remediar ${reportInfo.evidence_summary.total_vulnerabilities} vulnerabilidades identificadas` : \n      'Mantener monitoreo de seguridad continuo',\n    exploitationData.credentials_discovered > 0 ? \n      'Revisar y cambiar credenciales expuestas inmediatamente' : \n      'Implementar pol\u00edticas de contrase\u00f1as robustas',\n    exploitationData.exploitation_type?.includes('active_directory') ? \n      'Revisar configuraci\u00f3n de Active Directory y pol\u00edticas de dominio' : \n      'Implementar segmentaci\u00f3n de red y principio de menor privilegio',\n    'Realizar evaluaciones de seguridad peri\u00f3dicas',\n    'Implementar sistema de monitoreo y detecci\u00f3n de intrusiones'\n  ].filter(Boolean),\n  \n  workflow_status: 'COMPLETED_WITH_REPORT',\n  completion_time: timestamp\n};\n\nconsole.log('Reporte final generado:', JSON.stringify(finalReport, null, 2));\nconsole.log('Reporte HTML:', reportInfo.html_report);\nconsole.log('Nivel de riesgo:', finalReport.executive_summary.risk_level);\nconsole.log('Vulnerabilidades encontradas:', finalReport.executive_summary.total_vulnerabilities);\n\nreturn [{ json: finalReport }];"
+      },
+      "id": "180195b7-f284-4f81-8c58-b48c7b24db6e",
+      "name": "Generate Final Consolidated Report",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -3540,
+        240
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "ed0cb1c3-9f8d-4519-bb12-acd8054a68ea",
+      "name": "Return Success Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        -3220,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "79ed9d26-eb3f-4315-9c1e-7398794a39bf",
+      "name": "Return Error Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [
+        -6680,
+        460
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Network Scan": {
+      "main": [
+        [
+          {
+            "node": "Configure Scan Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configure Scan Parameters": {
+      "main": [
+        [
+          {
+            "node": "Prepare Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Command": {
+      "main": [
+        [
+          {
+            "node": "Port Discovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Port Discovery": {
+      "main": [
+        [
+          {
+            "node": "Process Port Discovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Port Discovery": {
+      "main": [
+        [
+          {
+            "node": "Check Port Discovery Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Port Discovery Success": {
+      "main": [
+        [
+          {
+            "node": "Prepare Service Enum Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Error Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Service Enum Command": {
+      "main": [
+        [
+          {
+            "node": "Service Enumeration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Service Enumeration": {
+      "main": [
+        [
+          {
+            "node": "Generate Final Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Final Report": {
+      "main": [
+        [
+          {
+            "node": "Prepare DC Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare DC Analysis": {
+      "main": [
+        [
+          {
+            "node": "Execute DC Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute DC Analysis": {
+      "main": [
+        [
+          {
+            "node": "Analyze DC Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze DC Classification": {
+      "main": [
+        [
+          {
+            "node": "Convert to Exploitation Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare ExploitDB Search": {
+      "main": [
+        [
+          {
+            "node": "Execute ExploitDB Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute ExploitDB Search": {
+      "main": [
+        [
+          {
+            "node": "Process ExploitDB Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process ExploitDB Results": {
+      "main": [
+        [
+          {
+            "node": "Convert to Exploitation Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Exploitation Format": {
+      "main": [
+        [
+          {
+            "node": "Check AD Environment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check AD Environment": {
+      "main": [
+        [
+          {
+            "node": "Prepare AD Enhanced Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Enhanced Exploitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Enhanced Exploitation": {
+      "main": [
+        [
+          {
+            "node": "Execute Exploitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AD Enhanced Command": {
+      "main": [
+        [
+          {
+            "node": "Execute AD Exploitation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Exploitation": {
+      "main": [
+        [
+          {
+            "node": "Process Enhanced Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Enhanced Results": {
+      "main": [
+        [
+          {
+            "node": "Prepare Evidence Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Evidence Report": {
+      "main": [
+        [
+          {
+            "node": "Execute Evidence Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Evidence Report": {
+      "main": [
+        [
+          {
+            "node": "Generate Final Consolidated Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Final Consolidated Report": {
+      "main": [
+        [
+          {
+            "node": "Return Success Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AD Enhanced Results": {
+      "main": [
+        [
+          {
+            "node": "Prepare Evidence Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "01416b0e-c32e-4032-9142-a9f10f1e6c9c",
+  "meta": {
+    "instanceId": "890910e1d7999d9b9aecf7e499bf3f9992b84f7f80d8f00fcf81b8525eaacaa9"
+  },
+  "id": "wZsN6WWfKROtqEZL",
+  "tags": [
+    {
+      "createdAt": "2025-06-05T14:14:54.897Z",
+      "updatedAt": "2025-06-05T14:14:54.897Z",
+      "id": "0Dq3pVrbHcLZlxTF",
+      "name": "enumeration"
+    },
+    {
+      "createdAt": "2025-06-05T14:14:54.911Z",
+      "updatedAt": "2025-06-05T14:14:54.911Z",
+      "id": "7by2S7NG5tBxDwBa",
+      "name": "network-audit"
+    },
+    {
+      "createdAt": "2025-06-04T17:18:21.598Z",
+      "updatedAt": "2025-06-04T17:18:21.598Z",
+      "id": "JGDyFfNI94PhcuSO",
+      "name": "security-audit"
+    },
+    {
+      "createdAt": "2025-06-04T16:59:45.610Z",
+      "updatedAt": "2025-06-04T16:59:45.610Z",
+      "id": "P1nW2XXoMkyTgrwx",
+      "name": "security-audit-robust"
+    },
+    {
+      "createdAt": "2025-06-04T17:16:47.255Z",
+      "updatedAt": "2025-06-04T17:16:47.255Z",
+      "id": "PjMBNYXZxa3zbU61",
+      "name": "security-scan"
+    },
+    {
+      "createdAt": "2025-06-05T14:14:54.905Z",
+      "updatedAt": "2025-06-05T14:14:54.905Z",
+      "id": "YpPnzG6vQ98fJ1GL",
+      "name": "complete-audit"
+    },
+    {
+      "createdAt": "2025-06-04T16:59:45.623Z",
+      "updatedAt": "2025-06-04T16:59:45.623Z",
+      "id": "g9jR7bMwD8vDD5zz",
+      "name": "error-handling"
+    },
+    {
+      "createdAt": "2025-06-05T14:14:54.887Z",
+      "updatedAt": "2025-06-05T14:14:54.887Z",
+      "id": "q9WfChDf1vxKwzMs",
+      "name": "discovery"
+    },
+    {
+      "createdAt": "2025-06-05T14:14:54.924Z",
+      "updatedAt": "2025-06-05T14:14:54.924Z",
+      "id": "qKFZrpC9VU6FauIR",
+      "name": "get-post-compatible"
+    },
+    {
+      "createdAt": "2025-06-05T14:14:54.932Z",
+      "updatedAt": "2025-06-05T14:14:54.932Z",
+      "id": "ZTuOnZJWHOrpVnaD",
+      "name": "fixed-405-error"
+    },
+    {
+      "createdAt": "2025-06-05T14:14:54.919Z",
+      "updatedAt": "2025-06-05T14:14:54.919Z",
+      "id": "zJrQhcLXXjU1cNNK",
+      "name": "docker-optimized"
+    }
+  ]
+}

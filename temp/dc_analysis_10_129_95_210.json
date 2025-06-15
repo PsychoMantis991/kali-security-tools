@@ -1,0 +1,194 @@
+{
+  "target": "10.129.95.210",
+  "dc_analysis": {
+    "target": "10.129.95.210",
+    "is_domain_controller": true,
+    "confidence": "high",
+    "machine_type": "domain_controller",
+    "score": 290,
+    "indicators": [
+      "DNS (53) detected",
+      "Kerberos (88) detected",
+      "LDAP (389) detected",
+      "SMB (445) detected",
+      "Global Catalog (3268) detected",
+      "Global Catalog SSL (3269) detected"
+    ],
+    "domain_info": {
+      "domain_name": "htb.local",
+      "forest_name": "htb.local",
+      "domain_controller": true
+    },
+    "reasons": [
+      "DNS service indicates DC functionality",
+      "Kerberos service indicates DC functionality", 
+      "LDAP service indicates DC functionality",
+      "SMB service indicates DC functionality",
+      "Global Catalog service indicates DC functionality",
+      "Global Catalog SSL service indicates DC functionality",
+      "High confidence DC classification based on service analysis"
+    ],
+    "ad_services": {
+      "ldap": true,
+      "kerberos": true,
+      "global_catalog": true,
+      "dns": true,
+      "detected_services": {
+        "53": {
+          "port": 53,
+          "expected_service": "DNS",
+          "detected_service": "domain",
+          "version": "Simple DNS Plus",
+          "weight": 10,
+          "critical": false
+        },
+        "88": {
+          "port": 88,
+          "expected_service": "Kerberos",
+          "detected_service": "kerberos-sec",
+          "version": "Microsoft Windows Kerberos",
+          "weight": 25,
+          "critical": true
+        },
+        "389": {
+          "port": 389,
+          "expected_service": "LDAP",
+          "detected_service": "ldap",
+          "version": "Microsoft Windows Active Directory LDAP",
+          "weight": 25,
+          "critical": true
+        },
+        "445": {
+          "port": 445,
+          "expected_service": "SMB",
+          "detected_service": "microsoft-ds",
+          "version": "Windows Server 2019 Standard microsoft-ds",
+          "weight": 5,
+          "critical": false
+        },
+        "3268": {
+          "port": 3268,
+          "expected_service": "Global Catalog",
+          "detected_service": "ldap",
+          "version": "Microsoft Windows Active Directory LDAP",
+          "weight": 30,
+          "critical": true
+        },
+        "3269": {
+          "port": 3269,
+          "expected_service": "Global Catalog SSL",
+          "detected_service": "tcpwrapped",
+          "version": "",
+          "weight": 30,
+          "critical": true
+        }
+      }
+    },
+    "timestamp": "2025-06-15T16:02:08.000000"
+  },
+  "machine_classification": {
+    "type": "domain_controller",
+    "is_domain_controller": true,
+    "confidence": "high",
+    "score": 290,
+    "analysis_timestamp": "2025-06-15T16:02:08.000000"
+  },
+  "detailed_results": {
+    "service_enumeration": {
+      "target": "10.129.95.210",
+      "services": {
+        "53": {
+          "port": 53,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "domain",
+          "version": "Simple DNS Plus"
+        },
+        "88": {
+          "port": 88,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "kerberos-sec",
+          "version": "Microsoft Windows Kerberos"
+        },
+        "135": {
+          "port": 135,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "msrpc",
+          "version": "Microsoft Windows RPC"
+        },
+        "139": {
+          "port": 139,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "netbios-ssn",
+          "version": "Microsoft Windows netbios-ssn"
+        },
+        "389": {
+          "port": 389,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "ldap",
+          "version": "Microsoft Windows Active Directory LDAP"
+        },
+        "445": {
+          "port": 445,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "microsoft-ds",
+          "version": "Windows Server 2019 Standard microsoft-ds"
+        },
+        "464": {
+          "port": 464,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "kpasswd5",
+          "version": ""
+        },
+        "593": {
+          "port": 593,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "ncacn_http",
+          "version": "Microsoft Windows RPC over HTTP 1.0"
+        },
+        "636": {
+          "port": 636,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "tcpwrapped",
+          "version": ""
+        },
+        "3268": {
+          "port": 3268,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "ldap",
+          "version": "Microsoft Windows Active Directory LDAP"
+        },
+        "3269": {
+          "port": 3269,
+          "protocol": "tcp",
+          "state": "open",
+          "service": "tcpwrapped",
+          "version": ""
+        }
+      },
+      "open_ports": [
+        53,
+        88,
+        135,
+        139,
+        389,
+        445,
+        464,
+        593,
+        636,
+        3268,
+        3269
+      ]
+    }
+  },
+  "exploitation_strategy": "active_directory"
+} 
