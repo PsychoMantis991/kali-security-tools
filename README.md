@@ -1,441 +1,226 @@
-# Kali Security Tools
-
-Herramienta de automatización para auditorías de seguridad que integra diversas herramientas de pentesting en un flujo de trabajo automatizado.
-
-## Estructura del Proyecto
-
-```
-kali-security-tools/
-├── config/                 # Archivos de configuración
-│   ├── port-discovery-config.json
-│   ├── service-mapping.json
-│   └── service-enum-config.json
-├── scripts/               # Scripts de automatización
-│   ├── port-discovery.py
-│   ├── process-nmap-output.py
-│   ├── service-enum.py
-│   └── generate_report.py
-├── workflows/            # Flujos de trabajo n8n
-│   ├── 01-recon-enumeration-new.json
-│   └── port-discovery-workflow.json
-├── database/            # Base de datos para almacenar resultados
-├── results/            # Resultados de los escaneos
-├── reports/           # Informes generados
-├── temp/             # Archivos temporales
-├── tools/           # Herramientas adicionales
-├── wordlists/      # Listas de palabras para fuerza bruta
-└── install_kali.sh # Script de instalación
-```
-
-## Requisitos Previos
-
-- Sistema operativo basado en Debian (preferiblemente Kali Linux)
-- Python 3.8 o superior
-- Docker y Docker Compose
-- n8n para la automatización de flujos de trabajo
-
-## Instalación
-
-1. Clonar el repositorio:
-```bash
-git clone https://github.com/tu-usuario/kali-security-tools.git
-cd kali-security-tools
-```
-
-2. Ejecutar el script de instalación:
-```bash
-chmod +x install_kali.sh
-./install_kali.sh
-```
-
-El script `install_kali.sh` realiza las siguientes tareas:
-
-- Instala dependencias del sistema:
-  - Python y pip
-  - Herramientas de desarrollo
-  - Bibliotecas necesarias
-
-- Instala herramientas de pentesting:
-  - Nmap
-  - Masscan
-  - Nuclei
-  - Gobuster
-  - SQLMap
-  - Evil-WinRM
-  - CrackMapExec
-  - Y otras herramientas esenciales
-
-- Configura el entorno:
-  - Crea directorios necesarios
-  - Configura variables de entorno
-  - Instala dependencias de Python
-  - Configura n8n
-
-- Verifica la instalación:
-  - Comprueba que todas las herramientas están disponibles
-  - Verifica la configuración
-  - Realiza pruebas básicas
-
-## Configuración
-
-### 1. Configuración de Port Discovery
-
-El archivo `config/port-discovery-config.json` contiene la configuración para el descubrimiento de puertos:
-
-```json
-{
-    "scan_ports": "1-65535",
-    "scan_type": "syn",
-    "timing": 2,
-    "evasion_techniques": [
-        "ttl_manipulation",
-        "timing",
-        "fragmentation"
-    ],
-    "default_ports": {
-        "low": "-F",
-        "medium": "-p-",
-        "high": "-p-"
-    }
-}
-```
-
-### 2. Configuración de Servicios
-
-El archivo `config/service-mapping.json` contiene el mapeo de servicios para corregir identificaciones incorrectas:
-
-```json
-{
-    "service_corrections": {
-        "winrm": {
-            "correct_service": "winrm",
-            "correct_port": 5985,
-            "os_requirements": ["Windows"],
-            "exploitation_tool": "evil-winrm"
-        }
-    }
-}
-```
-
-## Configuración de Workflows en n8n
-
-### Estructura de Workflows
-
-El proyecto incluye tres workflows principales que funcionan de manera integrada:
-
-1. **01-initial-recon.json**: Reconocimiento inicial
-   - Descubrimiento de puertos
-   - Detección de servicios básicos
-   - Identificación del sistema operativo
-   - **Activación**: Webhook independiente para escaneos rápidos
-   - **Uso**: Ideal para reconocimiento inicial o monitoreo de red
-
-2. **02-service-enumeration.json**: Enumeración detallada de servicios
-   - Análisis profundo de servicios detectados
-   - Corrección de identificaciones de servicios
-   - Mapeo de servicios según el sistema operativo
-   - **Activación**: Llamado internamente por el workflow de auditoría completa
-   - **Uso**: No se activa directamente, es parte del proceso de auditoría
-
-3. **03-full-audit.json**: Auditoría completa
-   - Combinación de los workflows anteriores
-   - Incluye fase de explotación
-   - Generación de informes
-   - Recomendaciones de seguridad
-   - **Activación**: Webhook independiente para auditorías completas
-   - **Uso**: Para auditorías de seguridad completas
-
-### Workflow de Explotación
-
-El workflow de explotación se ejecuta automáticamente como parte del workflow de auditoría completa (03-full-audit.json). No dispone de webhook propio ya que está diseñado para ser parte del proceso completo de auditoría.
-
-#### 1. Análisis de Servicios Explotables
-- Identificación de servicios con vulnerabilidades conocidas
-- Priorización de servicios según riesgo
-- Mapeo de servicios a herramientas de explotación
-- Análisis de versiones vulnerables
-- Detección de configuraciones inseguras
-
-#### 2. Explotación de Servicios Web
-- Escaneo con Nuclei para vulnerabilidades web
-  - Detección de vulnerabilidades OWASP Top 10
-  - Escaneo de vulnerabilidades específicas
-  - Análisis de headers de seguridad
-- Análisis de directorios con Gobuster
-  - Descubrimiento de rutas ocultas
-  - Detección de archivos sensibles
-  - Análisis de tecnologías web
-- Pruebas de inyección SQL con SQLMap
-  - Detección de puntos de inyección
-  - Explotación de vulnerabilidades SQL
-  - Extracción de datos
-
-#### 3. Explotación de Servicios de Red
-- Análisis de SMB con CrackMapExec
-  - Enumeración de shares
-  - Pruebas de autenticación
-  - Detección de configuraciones inseguras
-- Pruebas de WinRM con Evil-WinRM
-  - Verificación de accesos
-  - Pruebas de autenticación
-  - Análisis de configuraciones
-- Escaneo de vulnerabilidades en servicios RPC
-  - Detección de servicios expuestos
-  - Análisis de permisos
-  - Pruebas de acceso
-
-#### 4. Explotación de Servicios de Autenticación
-- Pruebas de fuerza bruta
-  - SSH, FTP, RDP, etc.
-  - Análisis de políticas de contraseñas
-  - Detección de cuentas por defecto
-- Análisis de políticas de seguridad
-  - Configuraciones de bloqueo
-  - Políticas de contraseñas
-  - Restricciones de acceso
-
-#### 5. Post-Explotación
-- Recopilación de información del sistema
-  - Configuraciones de red
-  - Usuarios y grupos
-  - Servicios y procesos
-- Análisis de permisos
-  - Escalada de privilegios
-  - Accesos privilegiados
-  - Configuraciones inseguras
-- Búsqueda de vectores de persistencia
-  - Tareas programadas
-  - Servicios de inicio
-  - Archivos de configuración
-
-#### 6. Generación de Evidencias
-- Capturas de pantalla
-  - Vulnerabilidades encontradas
-  - Accesos obtenidos
-  - Configuraciones inseguras
-- Logs de explotación
-  - Comandos ejecutados
-  - Resultados obtenidos
-  - Errores encontrados
-- Pruebas de concepto
-  - Scripts de explotación
-  - Payloads utilizados
-  - Vectores de ataque
-
-### Activación de Workflows
-
-1. **Para Escaneo Rápido**:
-   ```bash
-   curl -X POST http://localhost:5678/webhook/scan-network \
-     -H "Content-Type: application/json" \
-     -d '{
-       "target": "192.168.1.100",
-       "intensity": "medium",
-       "evasion": true
-     }'
-   ```
-
-2. **Para Auditoría Completa**:
-   ```bash
-   curl -X POST http://localhost:5678/webhook/full-audit \
-     -H "Content-Type: application/json" \
-     -d '{
-       "target": "192.168.1.100",
-       "intensity": "medium",
-       "vulnerability_scan": true,
-       "generate_report": true
-     }'
-   ```
-
-## Mejoras Futuras
-
-### 1. Automatización y Escalabilidad
-- Sistema de colas para múltiples objetivos
-  - Gestión de prioridades
-  - Balanceo de carga
-  - Monitoreo de recursos
-- Integración con sistemas de gestión
-  - Jira, ServiceNow, etc.
-  - Ticketing automático
-  - Seguimiento de vulnerabilidades
-- Escaneos programados
-  - Configuración flexible
-  - Notificaciones automáticas
-  - Historial de escaneos
-
-### 2. Nuevas Funcionalidades
-- Análisis de código fuente
-  - SAST/DAST integrado
-  - Análisis de dependencias
-  - Detección de secretos
-- Escaneo de contenedores
-  - Análisis de imágenes Docker
-  - Escaneo de Kubernetes
-  - Detección de configuraciones inseguras
-- Análisis de aplicaciones móviles
-  - Android/iOS
-  - Análisis de APIs
-  - Detección de vulnerabilidades
-
-### 3. Mejoras en la Explotación
-- Framework modular
-  - Plugins personalizados
-  - Integración de nuevas herramientas
-  - Actualización automática
-- Exploits personalizados
-  - Desarrollo de PoCs
-  - Adaptación de exploits
-  - Pruebas de concepto
-- Técnicas de evasión
-  - Bypass de WAF
-  - Evasión de IDS/IPS
-  - Técnicas de ofuscación
-
-### 4. Mejoras en la Documentación
-- Informes multi-formato
-  - HTML, PDF, Word
-  - Dashboards interactivos
-  - Exportación a formatos estándar
-- Gestión de conocimiento
-  - Base de datos de vulnerabilidades
-  - Guías de remediación
-  - Mejores prácticas
-
-### 5. Seguridad y Cumplimiento
-- Control de acceso
-  - RBAC implementado
-  - Autenticación MFA
-  - Auditoría de acciones
-- Gestión de secretos
-  - Integración con Vault
-  - Rotación de credenciales
-  - Cifrado de datos
-
-### 6. Integración y API
-- API REST completa
-  - Documentación OpenAPI
-  - Autenticación OAuth2
-  - Rate limiting
-- Integración CI/CD
-  - Plugins para Jenkins
-  - GitHub Actions
-  - GitLab CI
-
-### 7. Análisis y Machine Learning
-- Análisis predictivo
-  - Detección de patrones
-  - Predicción de vulnerabilidades
-  - Análisis de tendencias
-- Clasificación automática
-  - Priorización de hallazgos
-  - Categorización de vulnerabilidades
-  - Recomendaciones inteligentes
-
-### 8. Mejoras en la Usabilidad
-- Interfaz web
-  - Dashboard interactivo
-  - Gestión de escaneos
-  - Visualización de resultados
-- Configuración asistida
-  - Wizards de configuración
-  - Plantillas predefinidas
-  - Validación de configuraciones
-
-### 9. Optimización de Rendimiento
-- Paralelización
-  - Escaneos distribuidos
-  - Procesamiento en cluster
-  - Optimización de recursos
-- Caché y almacenamiento
-  - Caché inteligente
-  - Compresión de datos
-  - Gestión de almacenamiento
-
-### 10. Soporte y Mantenimiento
-- Actualizaciones
-  - Sistema de versionado
-  - Actualizaciones automáticas
-  - Rollback de cambios
-- Soporte
-  - Base de conocimiento
-  - Sistema de tickets
-  - Documentación detallada
-
-## Uso
-
-### 1. Descubrimiento de Puertos
-
-```bash
-python3 scripts/port-discovery.py <target> --intensity medium
-```
-
-Opciones:
-- `--intensity`: low, medium, high, stealth, full
-- `--output`: archivo de salida
-- `--service-detection`: activar detección de servicios
-
-### 2. Automatización con n8n
-
-1. Iniciar n8n:
-```bash
-n8n start
-```
-
-2. Importar el workflow:
-   - Abrir n8n en el navegador (http://localhost:5678)
-   - Importar el archivo `workflows/01-recon-enumeration-new.json`
-
-3. Configurar el webhook:
-   - El workflow expone un webhook en `/scan-network`
-   - Se puede activar con una petición POST
-
-### 3. Generación de Informes
-
-```bash
-python3 scripts/generate_report.py <input_file> --output <report_file>
-```
-
-## Flujo de Trabajo
-
-1. **Descubrimiento de Puertos**:
-   - Escaneo inicial de puertos
-   - Detección de versiones de servicios
-   - Identificación del sistema operativo
-
-2. **Enumeración de Servicios**:
-   - Detección de servicios en puertos abiertos
-   - Corrección de identificaciones de servicios
-   - Mapeo de servicios según el sistema operativo
-
-3. **Generación de Informes**:
-   - Consolidación de resultados
-   - Generación de informe en formato HTML/PDF
-   - Recomendaciones de seguridad
-
-## Características
-
-- Detección automática de servicios
-- Corrección de identificaciones incorrectas
-- Integración con herramientas de explotación
-- Generación de informes detallados
-- Automatización mediante n8n
-- Soporte para múltiples objetivos
-- Configuración flexible de escaneos
-
-## Contribuir
-
-1. Fork el repositorio
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## Licencia
-
-Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## Contacto
-
-Tu Nombre - [@tutwitter](https://twitter.com/tutwitter)
-
-Link del Proyecto: [https://github.com/tu-usuario/kali-security-tools](https://github.com/tu-usuario/kali-security-tools) 
+# Kali Security Tools - Automated Penetration Testing Platform
+
+## 🛡️ Overview
+
+Kali Security Tools is a comprehensive automated penetration testing platform that streamlines the entire security assessment workflow from reconnaissance to exploitation and reporting. Built with advanced automation capabilities, it provides security professionals with a powerful suite of tools for efficient and thorough security testing.
+
+## ✨ Core Features
+
+### 🔍 Automated Reconnaissance & Enumeration
+- **Multi-Target Port Discovery**: Comprehensive port scanning with configurable intensity levels
+- **Service Detection**: Advanced service version detection and fingerprinting
+- **Directory Enumeration**: Automated web directory and file discovery using multiple wordlists
+- **Subdomain Discovery**: Comprehensive subdomain enumeration and validation
+- **Technology Stack Detection**: Automated identification of web technologies and frameworks
+
+### 🏢 Active Directory Assessment
+- **Domain Controller Detection**: Intelligent DC identification with high-confidence scoring
+- **AD Service Analysis**: Comprehensive analysis of LDAP, Kerberos, DNS, and related services
+- **Domain Enumeration**: Automated domain user and group discovery
+- **Trust Relationship Analysis**: Detection and analysis of domain trust relationships
+- **GPO Assessment**: Group Policy analysis and potential vulnerabilities
+
+### 🎯 Intelligent Exploitation
+- **ExploitDB Integration**: Automated vulnerability scanning using ExploitDB database
+- **Service-Specific Exploits**: Targeted exploitation based on discovered services
+- **Multi-Vector Attack**: Parallel exploitation attempts across different attack vectors
+- **Payload Customization**: Dynamic payload generation based on target characteristics
+- **Session Management**: Automated session handling and privilege escalation
+
+### 🔐 Credential Management
+- **Password Cracking**: Integrated hashcat and John the Ripper workflows
+- **Credential Harvesting**: Automated extraction from various sources
+- **Hash Analysis**: Support for multiple hash formats and cracking techniques
+- **Credential Validation**: Automated testing of discovered credentials
+- **Pass-the-Hash Attacks**: Advanced credential reuse techniques
+
+### 📊 Evidence Collection & Reporting
+- **Automated Evidence Gathering**: Comprehensive collection of proof-of-concept data
+- **Multi-Format Reports**: HTML, JSON, and executive summary formats
+- **Real-Time Logging**: Detailed workflow and execution logging
+- **Screenshot Automation**: Automated capture of successful exploits
+- **Chain of Custody**: Secure evidence handling and documentation
+
+### 🔄 Workflow Automation
+- **Visual Workflow Designer**: n8n-based visual workflow creation and management
+- **Conditional Logic**: Smart decision trees based on reconnaissance results
+- **Parallel Processing**: Concurrent execution of multiple assessment phases
+- **Error Handling**: Robust error recovery and alternative execution paths
+- **Progress Monitoring**: Real-time workflow status and progress tracking
+
+## 🎯 Specialized Modules
+
+### Web Application Security
+- **OWASP Top 10 Testing**: Comprehensive coverage of common web vulnerabilities
+- **SQL Injection Detection**: Advanced SQLi discovery and exploitation
+- **XSS Testing**: Reflected, stored, and DOM-based XSS identification
+- **Authentication Bypass**: Multiple techniques for auth mechanism circumvention
+- **File Upload Vulnerabilities**: Automated testing of upload restrictions
+
+### Network Security
+- **Network Segmentation Testing**: VLAN and subnet penetration analysis
+- **Protocol Fuzzing**: Automated testing of network protocols
+- **Man-in-the-Middle**: ARP spoofing and traffic interception capabilities
+- **Wireless Security**: WiFi network assessment and cracking
+- **VPN Assessment**: VPN configuration and security analysis
+
+### Cloud Security
+- **AWS Security Assessment**: S3 bucket enumeration and misconfiguration detection
+- **Azure AD Analysis**: Cloud-based Active Directory assessment
+- **Container Security**: Docker and Kubernetes vulnerability scanning
+- **Cloud Storage Testing**: Multi-cloud storage security assessment
+- **IAM Policy Analysis**: Cloud permission and role assessment
+
+## 📁 Resource Management
+
+### Comprehensive Wordlists
+- **FuzzDB**: Extensive fuzzing database for various attack vectors
+- **SecLists**: Curated security testing lists for multiple purposes
+- **PayloadsAllTheThings**: Comprehensive payload collection
+- **Custom Lists**: Targeted wordlists for specific technologies and services
+
+### Exploit Database
+- **Local ExploitDB**: Complete offline exploit database
+- **Automated Updates**: Regular synchronization with latest exploits
+- **CVE Integration**: Cross-reference with CVE database
+- **Exploit Verification**: Automated testing of exploit reliability
+
+## 🔧 Configuration & Customization
+
+### Flexible Configuration
+- **Target Profiles**: Customizable scanning profiles for different environments
+- **Intensity Levels**: Adjustable scanning aggressiveness
+- **Custom Wordlists**: Support for organization-specific wordlists
+- **Exploit Filters**: Configurable exploit selection criteria
+- **Output Formats**: Multiple reporting and logging formats
+
+### Integration Capabilities
+- **API Endpoints**: RESTful APIs for external tool integration
+- **Webhook Support**: Real-time notifications and data sharing
+- **Database Integration**: Support for various database backends
+- **Third-Party Tools**: Integration with popular security tools
+- **Custom Scripts**: Support for user-defined automation scripts
+
+## 🚀 Future Enhancements
+
+### Artificial Intelligence & Machine Learning
+- **Intelligent Target Prioritization**: AI-driven vulnerability scoring and prioritization
+- **Automated Exploit Chaining**: ML-based exploitation path discovery
+- **Behavioral Analysis**: User and system behavior pattern recognition
+- **Threat Intelligence Integration**: Real-time threat feed incorporation
+- **Predictive Analytics**: Risk assessment and vulnerability prediction
+
+### Advanced Automation
+- **Zero-Touch Assessment**: Fully automated end-to-end penetration testing
+- **Dynamic Workflow Generation**: AI-generated testing workflows based on target characteristics
+- **Continuous Monitoring**: Ongoing security assessment and alerting
+- **Auto-Remediation**: Automated vulnerability fixing recommendations
+- **Smart Reporting**: Context-aware report generation with executive insights
+
+### Enhanced Collaboration
+- **Multi-User Support**: Team-based testing with role-based access control
+- **Real-Time Collaboration**: Live sharing of findings and progress
+- **Knowledge Base**: Centralized repository of testing methodologies and findings
+- **Peer Review System**: Collaborative validation of findings and exploits
+- **Mentoring Mode**: Guided learning for junior security professionals
+
+### Cloud & Scale
+- **Cloud-Native Deployment**: Kubernetes-based scalable deployment
+- **Distributed Testing**: Multi-node testing capability for large environments
+- **Resource Optimization**: Intelligent resource allocation and scheduling
+- **Global Load Balancing**: Distributed testing nodes across regions
+- **Elastic Scaling**: Automatic scaling based on testing demands
+
+### Compliance & Governance
+- **Compliance Frameworks**: Built-in support for major security frameworks (NIST, ISO 27001, PCI DSS)
+- **Audit Trail**: Comprehensive logging for compliance and forensics
+- **Risk Scoring**: Standardized risk assessment and scoring
+- **Regulatory Reporting**: Automated compliance report generation
+- **Data Privacy**: GDPR and privacy regulation compliance
+
+### Mobile & IoT Security
+- **Mobile App Assessment**: Android and iOS application security testing
+- **IoT Device Testing**: Specialized testing for Internet of Things devices
+- **Firmware Analysis**: Automated firmware security assessment
+- **Hardware Security**: Physical security testing capabilities
+- **Wireless Protocol Testing**: Bluetooth, Zigbee, and proprietary protocol assessment
+
+## 🎯 Use Cases
+
+### Enterprise Security Teams
+- **Regular Penetration Testing**: Automated quarterly or monthly assessments
+- **Continuous Security Monitoring**: Ongoing vulnerability detection
+- **Red Team Operations**: Advanced persistent threat simulation
+- **Compliance Validation**: Automated compliance checking and reporting
+
+### Security Consultants
+- **Client Assessments**: Standardized testing methodologies
+- **Report Generation**: Professional, branded security reports
+- **Time Efficiency**: Reduced manual testing time and increased coverage
+- **Quality Assurance**: Consistent testing standards across engagements
+
+### Educational Institutions
+- **Cybersecurity Training**: Hands-on learning environment
+- **Research Platform**: Security research and methodology development
+- **Student Projects**: Practical application of security concepts
+- **Capture The Flag**: Automated CTF environment creation
+
+### Bug Bounty Hunters
+- **Target Reconnaissance**: Comprehensive initial assessment
+- **Vulnerability Discovery**: Automated vulnerability identification
+- **Exploit Development**: Framework for exploit creation and testing
+- **Portfolio Management**: Organized tracking of discoveries and submissions
+
+## 🔒 Security & Ethics
+
+### Responsible Disclosure
+- **Ethical Guidelines**: Built-in ethical hacking principles
+- **Permission Verification**: Automated scope and authorization checking
+- **Data Protection**: Secure handling of sensitive information
+- **Responsible Reporting**: Structured vulnerability disclosure processes
+
+### Legal Compliance
+- **Authorization Tracking**: Documentation of testing permissions
+- **Jurisdiction Awareness**: Legal framework consideration
+- **Data Sovereignty**: Compliance with local data protection laws
+- **Professional Standards**: Adherence to industry best practices
+
+## 📈 Performance & Reliability
+
+### High Performance
+- **Parallel Processing**: Multi-threaded execution for faster results
+- **Resource Optimization**: Efficient CPU and memory utilization
+- **Network Efficiency**: Optimized network traffic and bandwidth usage
+- **Caching Systems**: Intelligent caching for repeated operations
+
+### Reliability & Stability
+- **Error Recovery**: Robust error handling and automatic recovery
+- **State Management**: Persistent state across system restarts
+- **Backup Systems**: Automated backup of findings and configurations
+- **Health Monitoring**: System health checks and alerting
+
+## 🌐 Community & Support
+
+### Open Source Philosophy
+- **Community Contributions**: Open platform for security community input
+- **Regular Updates**: Frequent updates with new capabilities and fixes
+- **Documentation**: Comprehensive guides and tutorials
+- **Community Forum**: Active support and knowledge sharing community
+
+### Professional Support
+- **Training Programs**: Comprehensive training on platform usage
+- **Custom Development**: Tailored solutions for specific requirements
+- **24/7 Support**: Enterprise-grade support options
+- **Consulting Services**: Expert guidance on security testing strategies
+
+---
+
+## 🚀 Getting Started
+
+The Kali Security Tools platform is designed to be intuitive and powerful, providing security professionals with everything needed for comprehensive security assessments. Whether you're conducting enterprise penetration tests, bug bounty hunting, or educational research, this platform adapts to your specific needs and requirements.
+
+**Ready to enhance your security testing capabilities?** Explore the comprehensive documentation and begin your journey with automated, intelligent penetration testing.
+
+---
+
+*Kali Security Tools - Empowering Security Professionals with Intelligent Automation* 

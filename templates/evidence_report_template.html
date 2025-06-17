@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Evidencias de Seguridad - {target}</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --text-color: #333;
+            --light-bg: #f5f6fa;
+            --border-color: #dcdde1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--light-bg);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+        }
+        
+        .header-content {
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        h2 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            font-size: 1.8rem;
+        }
+        
+        h3 {
+            color: var(--secondary-color);
+            margin: 1.5rem 0 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .overview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .overview-item {
+            background: linear-gradient(135deg, var(--light-bg) 0%, white 100%);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .overview-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+        
+        .overview-item h4 {
+            color: var(--secondary-color);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .overview-item p {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .risk-critical {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+        
+        .risk-high {
+            background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+            color: white;
+        }
+        
+        .risk-medium {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+        }
+        
+        .risk-low {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: white;
+        }
+        
+        .service-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .service-table th,
+        .service-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .service-table th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .service-table tr:hover {
+            background-color: var(--light-bg);
+        }
+        
+        .port-badge {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .success-badge {
+            background-color: var(--success-color);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .recommendation-list {
+            list-style: none;
+        }
+        
+        .recommendation-item {
+            background: linear-gradient(135deg, var(--light-bg) 0%, white 100%);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--secondary-color);
+            transition: transform 0.2s ease;
+        }
+        
+        .recommendation-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .recommendation-item::before {
+            content: "💡";
+            margin-right: 0.5rem;
+        }
+        
+        .stats-bar {
+            background-color: var(--light-bg);
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        
+        .stats-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success-color) 0%, var(--secondary-color) 100%);
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        
+        .timestamp {
+            color: var(--text-color);
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-color);
+            opacity: 0.8;
+            border-top: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+        
+        @media print {
+            body {
+                background-color: white;
+            }
+            
+            .section {
+                box-shadow: none;
+                border: 1px solid var(--border-color);
+            }
+            
+            header {
+                background: var(--primary-color) !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .overview-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1>🔒 Reporte de Evidencias de Seguridad</h1>
+                <p class="subtitle">Análisis Detallado de Target: <strong>{target}</strong></p>
+                <p class="timestamp">Generado: {timestamp}</p>
+            </div>
+        </header>
+        
+        <!-- Resumen Ejecutivo -->
+        <section class="section">
+            <h2>📊 Resumen Ejecutivo</h2>
+            
+            <div class="overview-grid">
+                <div class="overview-item">
+                    <h4>Archivos de Evidencia</h4>
+                    <p>{evidence_files}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Servicios Analizados</h4>
+                    <p>{services_tested}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Vulnerabilidades</h4>
+                    <p>{total_vulnerabilities}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Credenciales Encontradas</h4>
+                    <p>{credentials_found}</p>
+                </div>
+            </div>
+            
+            <div class="overview-grid">
+                <div class="overview-item risk-{risk_level_class}">
+                    <h4>Nivel de Riesgo</h4>
+                    <p>{risk_level}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Tasa de Éxito</h4>
+                    <p>{success_rate}%</p>
+                    <div class="stats-bar">
+                        <div class="stats-fill" style="width: {success_rate}%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Análisis de Servicios -->
+        <section class="section">
+            <h2>🔍 Análisis de Servicios</h2>
+            
+            <table class="service-table">
+                <thead>
+                    <tr>
+                        <th>Servicio</th>
+                        <th>Puerto</th>
+                        <th>Evidencias</th>
+                        <th>Vulnerabilidades</th>
+                        <th>Éxitos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {service_rows}
+                </tbody>
+            </table>
+        </section>
+        
+        <!-- Distribución de Vulnerabilidades -->
+        <section class="section">
+            <h2>⚠️ Distribución de Vulnerabilidades</h2>
+            
+            <div class="overview-grid">
+                <div class="overview-item risk-critical">
+                    <h4>Críticas</h4>
+                    <p>{critical_vulns}</p>
+                </div>
+                <div class="overview-item risk-high">
+                    <h4>Altas</h4>
+                    <p>{high_vulns}</p>
+                </div>
+                <div class="overview-item risk-medium">
+                    <h4>Medias</h4>
+                    <p>{medium_vulns}</p>
+                </div>
+                <div class="overview-item risk-low">
+                    <h4>Bajas</h4>
+                    <p>{low_vulns}</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Recomendaciones -->
+        <section class="section">
+            <h2>🎯 Recomendaciones de Seguridad</h2>
+            
+            <ul class="recommendation-list">
+                {recommendations_html}
+            </ul>
+        </section>
+        
+        <!-- Estadísticas Técnicas -->
+        <section class="section">
+            <h2>📈 Estadísticas Técnicas</h2>
+            
+            <div class="overview-grid">
+                <div class="overview-item">
+                    <h4>Total de Pruebas</h4>
+                    <p>{total_tests}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Pruebas Exitosas</h4>
+                    <p>{successful_tests}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Herramientas Utilizadas</h4>
+                    <p>{tools_used}</p>
+                </div>
+                <div class="overview-item">
+                    <h4>Tiempo de Análisis</h4>
+                    <p>Completo</p>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <footer>
+        <p>🛡️ Reporte generado automáticamente por Kali Security Tools Framework</p>
+        <p>Versión: Enhanced Evidence Reporter v2.1.1</p>
+    </footer>
+</body>
+</html> 
